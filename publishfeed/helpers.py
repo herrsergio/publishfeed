@@ -21,7 +21,6 @@ class FeedSetHelper(Helper):
     def get_pages_from_feeds(self):
         feed = FeedSet(self.data)
         for url in feed.urls:
-            print(url)
             parsed_feed = feedparser.parse(url)
             for entry in parsed_feed.entries:
                 # if feed page not exist, add it as rsscontent
@@ -32,7 +31,7 @@ class FeedSetHelper(Helper):
                     item_url = entry.link #.encode('utf-8')
                     
                     item_date = datetime.fromtimestamp(mktime(entry.published_parsed))
-                    #item_date = datetime.strptime(entry.published, "%Y-%m-%dT%H:%M:%SZ")
+    
                     item = RSSContent(url=item_url, title=item_title, dateAdded = item_date)
                     self.session.add(item)
 
