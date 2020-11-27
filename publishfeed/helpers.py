@@ -4,6 +4,8 @@ import yaml
 import config
 import feedparser
 from datetime import datetime
+from time import mktime
+
 
 class Helper:
     def __init__(self, session, data):
@@ -19,6 +21,7 @@ class FeedSetHelper(Helper):
     def get_pages_from_feeds(self):
         feed = FeedSet(self.data)
         for url in feed.urls:
+            print(url)
             parsed_feed = feedparser.parse(url)
             for entry in parsed_feed.entries:
                 # if feed page not exist, add it as rsscontent
@@ -27,8 +30,9 @@ class FeedSetHelper(Helper):
                 if not exists:
                     item_title = entry.title
                     item_url = entry.link #.encode('utf-8')
-                    #RFC 2822  standard: Wed, 7 Jun 2017 16:25:41 +0000
-                    item_date = datetime.strptime(entry.published, "%a, %d %b %Y %H:%M:%S +0000")
+                    
+                    item_date = datetime.fromtimestamp(mktime(entry.published_parsed))
+                    #item_date = datetime.strptime(entry.published, "%Y-%m-%dT%H:%M:%SZ")
                     item = RSSContent(url=item_url, title=item_title, dateAdded = item_date)
                     self.session.add(item)
 
