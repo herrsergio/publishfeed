@@ -31,14 +31,15 @@ class FeedSetHelper(Helper):
                     item_url = entry.link #.encode('utf-8')
                     
                     item_date = datetime.fromtimestamp(mktime(entry.published_parsed))
-    
+                    
                     item = RSSContent(url=item_url, title=item_title, dateAdded = item_date)
                     self.session.add(item)
 
 class RSSContentHelper(Helper):
     
     def get_oldest_unpublished_rsscontent(self, session):
-        rsscontent = session.query(RSSContent).filter_by(published = 0).order_by(RSSContent.dateAdded.asc()).first()
+        #rsscontent = session.query(RSSContent).filter_by(published = 0).order_by(RSSContent.dateAdded.asc()).first()
+        rsscontent = session.query(RSSContent).filter_by(published = 0).filter(RSSContent.dateAdded > '2020-01-01').order_by(RSSContent.title).first()
         return rsscontent
 
     def _calculate_tweet_length(self):
