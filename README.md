@@ -25,6 +25,12 @@ This is an easy way to get your [blog posts automatically tweeted](https://simpl
 
 ## Install dependencies
 
+Use Python 3.6
+
+<kbd>$ virtualenv -p python3.6 env</kbd>
+	
+<kbd>$ source env/bin/activate</kbd>
+
 Install Pip dependencies: <kbd>make install</kbd>
 
 ## Get Twitter credentials
