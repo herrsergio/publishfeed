@@ -5,6 +5,7 @@ import config
 import feedparser
 from datetime import datetime
 from time import mktime
+from sqlalchemy.sql.expression import func
 
 
 class Helper:
@@ -38,8 +39,7 @@ class FeedSetHelper(Helper):
 class RSSContentHelper(Helper):
     
     def get_oldest_unpublished_rsscontent(self, session):
-        #rsscontent = session.query(RSSContent).filter_by(published = 0).order_by(RSSContent.dateAdded.asc()).first()
-        rsscontent = session.query(RSSContent).filter_by(published = 0).filter(RSSContent.dateAdded > '2020-01-01').order_by(RSSContent.title).first()
+        rsscontent = session.query(RSSContent).filter_by(published = 0).filter(RSSContent.dateAdded > '2020-01-01').order_by(func.random()).first()
         return rsscontent
 
     def _calculate_tweet_length(self):
