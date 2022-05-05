@@ -69,7 +69,7 @@ class RSSContentHelper(Helper):
         # UGC will replace shares over time.
         api_url = 'https://api.linkedin.com/v2/ugcPosts'
         author = f'urn:li:person:{urn}'
-        post_2_linkedin(rsscontent.title, rsscontent.url, rsscontent.title)
+        post_2_linkedin(rsscontent.title, rsscontent.url, rsscontent.title, author, api_url, linkedin_headers)
 
         credentials = self.data['twitter']
         twitter = Twitter(**credentials)

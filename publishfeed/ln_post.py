@@ -17,7 +17,7 @@ def ln_user_info(headers):
     return user_info
 
 
-def post_2_linkedin(message, link, link_text):
+def post_2_linkedin(message, link, link_text, author, api_url, headers):
     post_data = {
         "author": author,
         "lifecycleState": "PUBLISHED",
