@@ -2,9 +2,10 @@ import requests
 
 from ln_oauth import ln_auth, ln_headers
 
-credentials = 'ln_credentials.json'
-access_token = ln_auth(credentials)  # Authenticate the API
-headers = ln_headers(access_token)  # Make the headers to attach to the API call.
+
+# credentials = 'ln_credentials.json'
+# access_token = ln_auth(credentials)  # Authenticate the API
+# headers = ln_headers(access_token)  # Make the headers to attach to the API call.
 
 
 def ln_user_info(headers):
@@ -47,13 +48,12 @@ def post_2_linkedin(message, link, link_text):
     r = requests.post(api_url, headers=headers, json=post_data)
     r.json()
 
-
 # Get user id to make a UGC post
-user_info = ln_user_info(headers)
-urn = user_info['id']
+# user_info = ln_user_info(headers)
+# urn = user_info['id']
 
 # UGC will replace shares over time.
-api_url = 'https://api.linkedin.com/v2/ugcPosts'
-author = f'urn:li:person:{urn}'
+# api_url = 'https://api.linkedin.com/v2/ugcPosts'
+# author = f'urn:li:person:{urn}'
 
-post_2_linkedin("", "https://t.co/vrm6illhRt", "My testing strategy for serverless applications")
+# post_2_linkedin("", "https://t.co/vrm6illhRt", "My testing strategy for serverless applications")
