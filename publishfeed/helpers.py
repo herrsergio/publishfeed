@@ -6,15 +6,19 @@ import feedparser
 from datetime import datetime
 from time import mktime
 from sqlalchemy.sql.expression import func
+from ln_oauth import ln_auth, ln_headers
+from ln_post import ln_user_info, post_2_linkedin
+
 
 class Helper:
     def __init__(self, session, data):
         self.session = session
-        if(isinstance(data, dict)):
+        if (isinstance(data, dict)):
             self.data = data
         else:
             with open('/home/ubuntu/publishfeed/publishfeed/feeds.yml', 'r') as f:
                 self.data = yaml.safe_load(f)[data]
+
 
 class FeedSetHelper(Helper):
 
@@ -24,24 +28,27 @@ class FeedSetHelper(Helper):
             parsed_feed = feedparser.parse(url)
             for entry in parsed_feed.entries:
                 # if feed page not exist, add it as rsscontent
-                q = self.session.query(RSSContent).filter_by(url = entry.link)
-                exists = self.session.query(q.exists()).scalar()    # returns True or False
+                q = self.session.query(RSSContent).filter_by(url=entry.link)
+                exists = self.session.query(q.exists()).scalar()  # returns True or False
                 if not exists:
                     item_title = entry.title
                     if "squid" in item_title.lower():
                         continue
-                    item_url = entry.link #.encode('utf-8')
-                    
+                    item_url = entry.link  # .encode('utf-8')
+
                     item_date = datetime.fromtimestamp(mktime(entry.published_parsed))
-                    
-                    item = RSSContent(url=item_url, title=item_title, dateAdded = item_date)
+
+                    item = RSSContent(url=item_url, title=item_title, dateAdded=item_date)
                     self.session.add(item)
 
+
 class RSSContentHelper(Helper):
-    
+
     def get_oldest_unpublished_rsscontent(self, session):
-        #rsscontent = session.query(RSSContent).filter_by(published = 0).filter(RSSContent.dateAdded > '2020-01-01').order_by(RSSContent.title).first()
-        rsscontent = session.query(RSSContent).filter_by(published = 0).filter(RSSContent.dateAdded > '2020-01-01').order_by(func.random()).first()
+        # rsscontent = session.query(RSSContent).filter_by(published = 0).filter(RSSContent.dateAdded >
+        # '2020-01-01').order_by(RSSContent.title).first()
+        rsscontent = session.query(RSSContent).filter_by(published=0).filter(
+            RSSContent.dateAdded > '2020-01-01').order_by(func.random()).first()
         return rsscontent
 
     def _calculate_tweet_length(self):
@@ -49,16 +56,29 @@ class RSSContentHelper(Helper):
         hashtag_length = len(self.data['hashtags'])
         body_length = tweet_net_length - hashtag_length
         return body_length
-    
+
     def tweet_rsscontent(self, rsscontent):
+        ln_credentials = 'ln_credentials.json'
+        linkedin_access_token = ln_auth(ln_credentials)  # Authenticate the API
+        linkedin_headers = ln_headers(linkedin_access_token)  # Make the headers to attach to the API call.
+
+        # Get user id to make a UGC post
+        user_info = ln_user_info(linkedin_headers)
+        urn = user_info['id']
+
+        # UGC will replace shares over time.
+        api_url = 'https://api.linkedin.com/v2/ugcPosts'
+        author = f'urn:li:person:{urn}'
+        post_2_linkedin(rsscontent.title, rsscontent.url, rsscontent.title)
+
         credentials = self.data['twitter']
         twitter = Twitter(**credentials)
-        
+
         body_length = self._calculate_tweet_length()
         tweet_body = rsscontent.title[:body_length]
         tweet_url = rsscontent.url
         tweet_hashtag = self.data['hashtags']
         tweet_text = "{} {} {}".format(tweet_body, tweet_url, tweet_hashtag)
         twitter.update_status(tweet_text)
-        rsscontent.published=True
+        rsscontent.published = True
         self.session.flush()
