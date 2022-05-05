@@ -16,7 +16,7 @@ def db_connect(account):
     Performs database connection using database settings from settings.py.
     Returns sqlalchemy engine instance
     """
-    db_path = 'databases/rss_{}.db'.format(account)
+    db_path = '/home/ubuntu/publishfeed/publishfeed/databases/rss_{}.db'.format(account)
     return create_engine("sqlite:///{}".format(db_path))
 
 def create_tables(account):

@@ -5,7 +5,7 @@ import config
 import feedparser
 from datetime import datetime
 from time import mktime
-
+from sqlalchemy.sql.expression import func
 
 class Helper:
     def __init__(self, session, data):
@@ -13,7 +13,7 @@ class Helper:
         if(isinstance(data, dict)):
             self.data = data
         else:
-            with open('feeds.yml', 'r') as f:
+            with open('/home/ubuntu/publishfeed/publishfeed/feeds.yml', 'r') as f:
                 self.data = yaml.safe_load(f)[data]
 
 class FeedSetHelper(Helper):
@@ -28,6 +28,8 @@ class FeedSetHelper(Helper):
                 exists = self.session.query(q.exists()).scalar()    # returns True or False
                 if not exists:
                     item_title = entry.title
+                    if "squid" in item_title.lower():
+                        continue
                     item_url = entry.link #.encode('utf-8')
                     
                     item_date = datetime.fromtimestamp(mktime(entry.published_parsed))
@@ -38,8 +40,8 @@ class FeedSetHelper(Helper):
 class RSSContentHelper(Helper):
     
     def get_oldest_unpublished_rsscontent(self, session):
-        #rsscontent = session.query(RSSContent).filter_by(published = 0).order_by(RSSContent.dateAdded.asc()).first()
-        rsscontent = session.query(RSSContent).filter_by(published = 0).filter(RSSContent.dateAdded > '2020-01-01').order_by(RSSContent.title).first()
+        #rsscontent = session.query(RSSContent).filter_by(published = 0).filter(RSSContent.dateAdded > '2020-01-01').order_by(RSSContent.title).first()
+        rsscontent = session.query(RSSContent).filter_by(published = 0).filter(RSSContent.dateAdded > '2020-01-01').order_by(func.random()).first()
         return rsscontent
 
     def _calculate_tweet_length(self):

@@ -30,7 +30,7 @@ def db_session(account):
     account selected in feeds.yml.
     Returns sqlalchemy session instance
     """
-    db_path = 'databases/rss_{}.db'.format(account)
+    db_path = '/home/ubuntu/publishfeed/publishfeed/databases/rss_{}.db'.format(account)
     engine = create_engine("sqlite:///{}".format(db_path))
     Session = sessionmaker(bind=engine)
     session = Session()
