@@ -3,3 +3,5 @@ __pycache__
 databases/
 feeds.yml
 test.db
+ln_credentials.json
+.idea/
