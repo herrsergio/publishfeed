@@ -42,7 +42,7 @@ def post_2_linkedin(message, link, link_text, author, api_url, headers):
             }
         },
         "visibility": {
-            "com.linkedin.ugc.MemberNetworkVisibility": "CONNECTIONS"
+            "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
         }
     }
     r = requests.post(api_url, headers=headers, json=post_data)
