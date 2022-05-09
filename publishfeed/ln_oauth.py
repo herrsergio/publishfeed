@@ -22,7 +22,7 @@ def ln_auth(credentials):
     You will have to manually paste the redirect URI in the prompt.
     '''
     creds = ln_read_creds(credentials)
-    print(creds)
+    #print(creds)
     client_id, client_secret = creds['client_id'], creds['client_secret']
     redirect_uri = creds['redirect_uri']
     api_url = 'https://www.linkedin.com/oauth/v2'
@@ -148,11 +148,11 @@ def ln_refresh_token(auth_code, client_id, client_secret, redirect_uri):
 
     response = requests.post(access_token_url, data=data, timeout=30)
     response = response.json()
-    print(response)
+    #print(response)
     access_token = response['access_token']
     return access_token
 
 
 if __name__ == '__main__':
-    credentials = 'ln_credentials.json'
+    credentials = '/home/ubuntu/publishfeed/publishfeed/ln_credentials.json'
     access_token = ln_auth(credentials)

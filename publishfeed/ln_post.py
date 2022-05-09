@@ -2,8 +2,7 @@ import requests
 
 from ln_oauth import ln_auth, ln_headers
 
-
-# credentials = 'ln_credentials.json'
+# credentials = '/home/ubuntu/publishfeed/publishfeed/ln_credentials.json'
 # access_token = ln_auth(credentials)  # Authenticate the API
 # headers = ln_headers(access_token)  # Make the headers to attach to the API call.
 
@@ -47,6 +46,7 @@ def post_2_linkedin(message, link, link_text, author, api_url, headers):
     }
     r = requests.post(api_url, headers=headers, json=post_data)
     r.json()
+
 
 # Get user id to make a UGC post
 # user_info = ln_user_info(headers)

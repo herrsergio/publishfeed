@@ -48,7 +48,7 @@ class RSSContentHelper(Helper):
         # rsscontent = session.query(RSSContent).filter_by(published = 0).filter(RSSContent.dateAdded >
         # '2020-01-01').order_by(RSSContent.title).first()
         rsscontent = session.query(RSSContent).filter_by(published=0).filter(
-            RSSContent.dateAdded > '2020-01-01').order_by(func.random()).first()
+            RSSContent.dateAdded > '2022-04-04').order_by(func.random()).first()
         return rsscontent
 
     def _calculate_tweet_length(self):
@@ -58,7 +58,7 @@ class RSSContentHelper(Helper):
         return body_length
 
     def tweet_rsscontent(self, rsscontent):
-        ln_credentials = 'ln_credentials.json'
+        ln_credentials = '/home/ubuntu/publishfeed/publishfeed/ln_credentials.json'
         linkedin_access_token = ln_auth(ln_credentials)  # Authenticate the API
         linkedin_headers = ln_headers(linkedin_access_token)  # Make the headers to attach to the API call.
 
