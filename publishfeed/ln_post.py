@@ -21,7 +21,8 @@ def ln_user_info(headers):
 
 
 def post_2_linkedin(message, link, link_text, author, api_url, headers):
-    asset = upload_image_linkdin(link, author, headers)
+    #asset = upload_image_linkdin(link, author, headers)
+    #print(asset)
     post_data = {
         "author": author,
         "lifecycleState": "PUBLISHED",
@@ -37,7 +38,7 @@ def post_2_linkedin(message, link, link_text, author, api_url, headers):
                         "description": {
                             "text": message
                         },
-                        "media": asset,
+                        #"media": asset,
                         "originalUrl": link,
                         "title": {
                             "text": link_text
@@ -50,8 +51,10 @@ def post_2_linkedin(message, link, link_text, author, api_url, headers):
             "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
         }
     }
+    print(post_data)
     r = requests.post(api_url, headers=headers, json=post_data)
     r.json()
+    print(r)
 
 
 def upload_image_linkdin(link, author, headers):
@@ -73,11 +76,11 @@ def upload_image_linkdin(link, author, headers):
             ]
         }
     }
-    register_upload_response = requests.post(register_upload_url, data=register_upload_data, timeout=30)
+    register_upload_response = requests.post(register_upload_url, headers=headers, json=register_upload_data, timeout=30)
     response = register_upload_response.json()
 
-    uploadurl = response['uploadUrl']
-    asset = response['asset']
+    uploadurl = response['value']['uploadMechanism']['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']['uploadUrl']
+    asset = response['value']['asset']
 
     og_link = opengraph_py3.OpenGraph(url=link)
 
@@ -89,7 +92,7 @@ def upload_image_linkdin(link, author, headers):
     local_image_filename = "/tmp/"+image_filename
     urllib.request.urlretrieve(image_url, local_image_filename)
 
-    upload_response = requests.put(uploadurl, headers=headers, data=open(local_image_filename, 'r').read())
+    upload_response = requests.put(uploadurl, headers=headers, data=open(local_image_filename, 'rb').read())
 
     os.remove(local_image_filename)
 
