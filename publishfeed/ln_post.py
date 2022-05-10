@@ -1,4 +1,8 @@
+import os
+import urllib.request
+
 import requests
+import opengraph_py3
 
 from ln_oauth import ln_auth, ln_headers
 
@@ -17,6 +21,7 @@ def ln_user_info(headers):
 
 
 def post_2_linkedin(message, link, link_text, author, api_url, headers):
+    asset = upload_image_linkdin(link, author, headers)
     post_data = {
         "author": author,
         "lifecycleState": "PUBLISHED",
@@ -32,6 +37,7 @@ def post_2_linkedin(message, link, link_text, author, api_url, headers):
                         "description": {
                             "text": message
                         },
+                        "media": asset,
                         "originalUrl": link,
                         "title": {
                             "text": link_text
@@ -48,12 +54,46 @@ def post_2_linkedin(message, link, link_text, author, api_url, headers):
     r.json()
 
 
-# Get user id to make a UGC post
-# user_info = ln_user_info(headers)
-# urn = user_info['id']
+def upload_image_linkdin(link, author, headers):
+    # https://docs.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/share-on-linkedin
 
-# UGC will replace shares over time.
-# api_url = 'https://api.linkedin.com/v2/ugcPosts'
-# author = f'urn:li:person:{urn}'
+    image_url = ""
+    register_upload_url = "https://api.linkedin.com/v2/assets?action=registerUpload"
+    register_upload_data = {
+        "registerUploadRequest": {
+            "recipes": [
+                "urn:li:digitalmediaRecipe:feedshare-image"
+            ],
+            "owner": author,
+            "serviceRelationships": [
+                {
+                    "relationshipType": "OWNER",
+                    "identifier": "urn:li:userGeneratedContent"
+                }
+            ]
+        }
+    }
+    register_upload_response = requests.post(register_upload_url, data=register_upload_data, timeout=30)
+    response = register_upload_response.json()
 
-# post_2_linkedin("", "https://t.co/vrm6illhRt", "My testing strategy for serverless applications")
+    uploadurl = response['uploadUrl']
+    asset = response['asset']
+
+    og_link = opengraph_py3.OpenGraph(url=link)
+
+    for key, value in og_link.items():
+        if key == "image":
+            image_url = value
+
+    image_filename = image_url.split('/')[-1]
+    local_image_filename = "/tmp/"+image_filename
+    urllib.request.urlretrieve(image_url, local_image_filename)
+
+    upload_response = requests.put(uploadurl, headers=headers, data=open(local_image_filename, 'r').read())
+
+    os.remove(local_image_filename)
+
+    return asset
+
+
+
