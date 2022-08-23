@@ -60,25 +60,26 @@ def post_2_linkedin(message, link, link_text, author, api_url, headers):
 def post_2_linkedin_legacy(message, link, link_text, author, api_url, headers):
     thumbnail = get_image_url_from_link(link)
     payload = {
-    "content": {
-        "contentEntities": [
-            {
-                "entityLocation": link,
-                "thumbnails": [
-                    {
-                        "resolvedUrl": thumbnail
-                    }
-                ]
-            }
-        ],
-        "title": link_text
-    },
-    'distribution': {
-        'linkedInDistributionTarget': {}
-    },
-    'owner': f'{author}',
-    'text': {
-        'text': link_text
+        "content": {
+            "contentEntities": [
+                {
+                    "entityLocation": link,
+                    "thumbnails": [
+                        {
+                            "resolvedUrl": thumbnail
+                        }
+                    ]
+                }
+            ],
+            "title": link_text
+        },
+        'distribution': {
+            'linkedInDistributionTarget': {}
+        },
+        'owner': f'{author}',
+        'text': {
+            'text': link_text
+        }
     }
     r = requests.post(api_url, headers=headers, json=payload)
     r.json()
