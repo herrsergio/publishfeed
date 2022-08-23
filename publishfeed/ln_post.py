@@ -1,5 +1,6 @@
 import os
 import urllib.request
+from urllib.parse import urlparse
 
 import requests
 import opengraph_py3
@@ -58,7 +59,9 @@ def post_2_linkedin(message, link, link_text, author, api_url, headers):
 
 # Using legacy method to share URL so it can also add image to the post
 def post_2_linkedin_legacy(message, link, link_text, author, api_url, headers):
-    thumbnail = get_image_url_from_link(link)
+    #thumbnail = get_image_url_from_link(link)
+    thumbnail = custom_get_img_from_link(link)
+
     payload = {
         "content": {
             "contentEntities": [
@@ -94,6 +97,27 @@ def get_image_url_from_link(link):
             image_url = value
 
     return image_url
+
+def custom_get_img_from_link(link):
+    
+    #headers = {"User-Agent":get_random_UA()}
+    headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"}
+    r = requests.get(link, headers=headers)
+
+    parsed_uri = urlparse(link)
+    domain = '{uri.scheme}://{uri.netloc}/'.format(uri=parsed_uri)
+
+    page = opengraph_py3.OpenGraph(html=r.content)
+
+    if page.is_valid():
+
+        image_url = page.get('image', None)
+
+        if not image_url.startswith('http'):
+            image_url = urljoin(domain, page['image'])
+
+        return image_url
+
 
 # Uploading the image to Linkedin did not work
 # Keeping this function, it could be handy later
