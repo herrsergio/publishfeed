@@ -1,5 +1,6 @@
 import os
 import urllib.request
+from urllib.parse import urlparse
 
 import requests
 import opengraph_py3
@@ -106,10 +107,7 @@ def custom_get_img_from_link(link):
     parsed_uri = urlparse(link)
     domain = '{uri.scheme}://{uri.netloc}/'.format(uri=parsed_uri)
 
-    OpenGraph.parser = parser
-    OpenGraph.scrape = True  # workaround for some subtle bug in opengraph
-
-    page = OpenGraph(html=r.content)
+    page = opengraph_py3.OpenGraph(html=r.content)
 
     if page.is_valid():
 
