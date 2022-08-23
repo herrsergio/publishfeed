@@ -84,7 +84,6 @@ def post_2_linkedin_legacy(message, link, link_text, author, api_url, headers):
     r = requests.post(api_url, headers=headers, json=payload)
     r.json()
     print(r)
-}
 
 def get_image_url_from_link(link):
     image_url = ""
