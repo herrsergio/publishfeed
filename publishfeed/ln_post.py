@@ -56,7 +56,22 @@ def post_2_linkedin(message, link, link_text, author, api_url, headers):
     r.json()
     print(r)
 
+# Using legacy method to share URL so it can also add image to the post
+def post_2_linkedin_legacy(message, link, link_text, author, api_url, headers):
+    
 
+def get_image_url_from_link(link):
+    image_url = ""
+    og_link = opengraph_py3.OpenGraph(url=link)
+
+    for key, value in og_link.items():
+        if key == "image":
+            image_url = value
+
+    return image_url
+
+# Uploading the image to Linkedin did not work
+# Keeping this function, it could be handy later
 def upload_image_linkdin(link, author, headers):
     # https://docs.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/share-on-linkedin
 
