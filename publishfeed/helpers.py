@@ -7,7 +7,7 @@ from datetime import datetime
 from time import mktime
 from sqlalchemy.sql.expression import func
 from ln_oauth import ln_auth, ln_headers
-from ln_post import ln_user_info, post_2_linkedin
+from ln_post import ln_user_info, post_2_linkedin, post_2_linkedin_legacy
 
 
 class Helper:
@@ -67,9 +67,11 @@ class RSSContentHelper(Helper):
         urn = user_info['id']
 
         # UGC will replace shares over time.
-        api_url = 'https://api.linkedin.com/v2/ugcPosts'
+        #api_url = 'https://api.linkedin.com/v2/ugcPosts'
+        api_url = 'https://api.linkedin.com/v2/shares'
         author = f'urn:li:person:{urn}'
-        post_2_linkedin(rsscontent.title, rsscontent.url, rsscontent.title, author, api_url, linkedin_headers)
+        #post_2_linkedin(rsscontent.title, rsscontent.url, rsscontent.title, author, api_url, linkedin_headers)
+        post_2_linkedin_legacy(rsscontent.title, rsscontent.url, rsscontent.title, author, api_url, linkedin_headers)
 
         credentials = self.data['twitter']
         twitter = Twitter(**credentials)
