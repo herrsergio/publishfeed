@@ -1,4 +1,8 @@
+import os
+import urllib.request
+
 import requests
+import opengraph_py3
 
 from ln_oauth import ln_auth, ln_headers
 
@@ -17,6 +21,8 @@ def ln_user_info(headers):
 
 
 def post_2_linkedin(message, link, link_text, author, api_url, headers):
+    #asset = upload_image_linkdin(link, author, headers)
+    #print(asset)
     post_data = {
         "author": author,
         "lifecycleState": "PUBLISHED",
@@ -32,6 +38,7 @@ def post_2_linkedin(message, link, link_text, author, api_url, headers):
                         "description": {
                             "text": message
                         },
+                        #"media": asset,
                         "originalUrl": link,
                         "title": {
                             "text": link_text
@@ -44,16 +51,92 @@ def post_2_linkedin(message, link, link_text, author, api_url, headers):
             "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
         }
     }
+    print(post_data)
     r = requests.post(api_url, headers=headers, json=post_data)
     r.json()
+    print(r)
+
+# Using legacy method to share URL so it can also add image to the post
+def post_2_linkedin_legacy(message, link, link_text, author, api_url, headers):
+    thumbnail = get_image_url_from_link(link)
+    payload = {
+        "content": {
+            "contentEntities": [
+                {
+                    "entityLocation": link,
+                    "thumbnails": [
+                        {
+                            "resolvedUrl": thumbnail
+                        }
+                    ]
+                }
+            ],
+            "title": link_text
+        },
+        'distribution': {
+            'linkedInDistributionTarget': {}
+        },
+        'owner': f'{author}',
+        'text': {
+            'text': link_text
+        }
+    }
+    r = requests.post(api_url, headers=headers, json=payload)
+    r.json()
+    print(r)
+
+def get_image_url_from_link(link):
+    image_url = ""
+    og_link = opengraph_py3.OpenGraph(url=link)
+
+    for key, value in og_link.items():
+        if key == "image":
+            image_url = value
+
+    return image_url
+
+# Uploading the image to Linkedin did not work
+# Keeping this function, it could be handy later
+def upload_image_linkdin(link, author, headers):
+    # https://docs.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/share-on-linkedin
+
+    image_url = ""
+    register_upload_url = "https://api.linkedin.com/v2/assets?action=registerUpload"
+    register_upload_data = {
+        "registerUploadRequest": {
+            "recipes": [
+                "urn:li:digitalmediaRecipe:feedshare-image"
+            ],
+            "owner": author,
+            "serviceRelationships": [
+                {
+                    "relationshipType": "OWNER",
+                    "identifier": "urn:li:userGeneratedContent"
+                }
+            ]
+        }
+    }
+    register_upload_response = requests.post(register_upload_url, headers=headers, json=register_upload_data, timeout=30)
+    response = register_upload_response.json()
+
+    uploadurl = response['value']['uploadMechanism']['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']['uploadUrl']
+    asset = response['value']['asset']
+
+    og_link = opengraph_py3.OpenGraph(url=link)
+
+    for key, value in og_link.items():
+        if key == "image":
+            image_url = value
+
+    image_filename = image_url.split('/')[-1]
+    local_image_filename = "/tmp/"+image_filename
+    urllib.request.urlretrieve(image_url, local_image_filename)
+
+    upload_response = requests.put(uploadurl, headers=headers, data=open(local_image_filename, 'rb').read())
+
+    os.remove(local_image_filename)
+
+    return asset
 
 
-# Get user id to make a UGC post
-# user_info = ln_user_info(headers)
-# urn = user_info['id']
 
-# UGC will replace shares over time.
-# api_url = 'https://api.linkedin.com/v2/ugcPosts'
-# author = f'urn:li:person:{urn}'
-
-# post_2_linkedin("", "https://t.co/vrm6illhRt", "My testing strategy for serverless applications")
