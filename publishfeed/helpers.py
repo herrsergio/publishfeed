@@ -3,6 +3,7 @@ from twitter import Twitter
 import yaml
 import config
 import feedparser
+import re
 from datetime import datetime
 from time import mktime
 from sqlalchemy.sql.expression import func
@@ -57,7 +58,7 @@ class RSSContentHelper(Helper):
         body_length = tweet_net_length - hashtag_length
         return body_length
 
-    def generate_hashtags(string, word_list):
+    def generate_hashtags(self, string, word_list):
         words = re.findall(r'\b\w+\b', string) # Get all words from the string
         hashtags = []
         for word in words:
@@ -88,7 +89,7 @@ class RSSContentHelper(Helper):
                         "s3", "sales", "salesforce", "science", "security", "scrum", "sre", "stateful", "stateless",
                         "strategy", "success", "terraform", "technology", "togaf", "transformation", "vmware"]
 
-        the_hashtags = generate_hashtags(rsscontent.title, hashtag_list)
+        the_hashtags = self.generate_hashtags(rsscontent.title, hashtag_list)
         content = rsscontent.title + " " + " ".join([x for x in the_hashtags])
 
         # UGC will replace shares over time.
