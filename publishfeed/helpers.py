@@ -57,6 +57,15 @@ class RSSContentHelper(Helper):
         body_length = tweet_net_length - hashtag_length
         return body_length
 
+    def generate_hashtags(string, word_list):
+        words = re.findall(r'\b\w+\b', string) # Get all words from the string
+        hashtags = []
+        for word in words:
+            if word.lower() in word_list:
+                hashtag = "#" + word.lower()
+                hashtags.append(hashtag)
+        return hashtags
+
     def tweet_rsscontent(self, rsscontent):
         ln_credentials = '/home/ubuntu/publishfeed/publishfeed/ln_credentials.json'
         linkedin_access_token = ln_auth(ln_credentials)  # Authenticate the API
@@ -66,18 +75,34 @@ class RSSContentHelper(Helper):
         user_info = ln_user_info(linkedin_headers)
         urn = user_info['id']
 
+        #Hashtags
+        hashtag_list = ["agile", "amazon", "analytics", "api", "architecture", "aurora", "azure", "bigquery",
+                        "blockchain", "brand", "cisco", "cncf", "coding", "compliance", "containers",
+                        "customer", "data", "deployment", "digital", "docker", "ec2", "economy", "encryption",
+                        "engineering", "experts", "fargate", "firewall", "fintech", "forrester", "future",
+                        "gartner", "government", "google", "health", "healthcare", "ia", "iam", "india",
+                        "infrastructure", "innovation", "jenkins", "kubernetes", "leadership", "location",
+                        "linux", "logging", "management", "maturity", "microsoft", "microservices", "microservice",
+                        "ml", "ml/ai", "mesh", "metaverse", "motivation", "microsoft", "partners", "pod",
+                        "pods", "powerpoint", "productivity", "pipeline", "proxy", "rds", "robot", "robotics",
+                        "s3", "sales", "salesforce", "science", "security", "scrum", "sre", "stateful", "stateless",
+                        "strategy", "success", "terraform", "technology", "togaf", "transformation", "vmware"]
+
+        the_hashtags = generate_hashtags(rsscontent.title, hashtag_list)
+        content = rsscontent.title + " " + " ".join([x for x in the_hashtags])
+
         # UGC will replace shares over time.
         #api_url = 'https://api.linkedin.com/v2/ugcPosts'
         api_url = 'https://api.linkedin.com/v2/shares'
         author = f'urn:li:person:{urn}'
         #post_2_linkedin(rsscontent.title, rsscontent.url, rsscontent.title, author, api_url, linkedin_headers)
-        post_2_linkedin_legacy(rsscontent.title, rsscontent.url, rsscontent.title, author, api_url, linkedin_headers)
+        post_2_linkedin_legacy(rsscontent.title, rsscontent.url, content, author, api_url, linkedin_headers)
 
         credentials = self.data['twitter']
         twitter = Twitter(**credentials)
 
         body_length = self._calculate_tweet_length()
-        tweet_body = rsscontent.title[:body_length]
+        tweet_body = content[:body_length]
         tweet_url = rsscontent.url
         tweet_hashtag = self.data['hashtags']
         tweet_text = "{} {} {}".format(tweet_body, tweet_url, tweet_hashtag)
