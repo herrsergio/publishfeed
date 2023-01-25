@@ -77,20 +77,21 @@ class RSSContentHelper(Helper):
         urn = user_info['id']
 
         #Hashtags
-        hashtag_list = ["agile", "amazon", "analytics", "api", "architecture", "aurora", "azure", "bigquery",
-                        "blockchain", "brand", "cisco", "cncf", "coding", "compliance", "containers",
-                        "customer", "data", "deployment", "digital", "docker", "ec2", "economy", "encryption",
+        hashtag_list = ["agile", "ai", "algorithm", "amazon", "analytics", "api", "architecture", "aurora", "aws", "azure", "bigquery",
+                        "blockchain", "botnet", "brand", "chatgpt", "cisco", "cloud", "cloudwatch", "cncf", "coding", "compliance", "containers",
+                        "customer", "data", "database", "deployment", "digital", "docker", "ec2", "economy", "eks", "encryption",
                         "engineering", "experts", "fargate", "firewall", "fintech", "forrester", "future",
-                        "gartner", "government", "google", "health", "healthcare", "ia", "iam", "india",
+                        "gartner", "gcp", "git", "github", "government", "google", "health", "healthcare", "ia", "iam", "india",
                         "infrastructure", "innovation", "jenkins", "kubernetes", "leadership", "location",
                         "linux", "logging", "management", "maturity", "microsoft", "microservices", "microservice",
                         "ml", "ml/ai", "mesh", "metaverse", "motivation", "microsoft", "partners", "pod",
                         "pods", "powerpoint", "productivity", "pipeline", "proxy", "rds", "robot", "robotics",
-                        "s3", "sales", "salesforce", "science", "security", "scrum", "sre", "stateful", "stateless",
-                        "strategy", "success", "terraform", "technology", "togaf", "transformation", "vmware"]
+                        "s3", "sales", "salesforce", "science", "security", "serverless", "scrum", "sre", "sql", "stateful", "stateless",
+                        "storage", "strategy", "success", "terraform", "technology", "tensorflow", "togaf", "transformation", "twitter",
+                        "vmware", "vpc", "vulnerabilities"]
 
         the_hashtags = self.generate_hashtags(rsscontent.title, hashtag_list)
-        content = rsscontent.title + " " + " ".join([x for x in the_hashtags])
+        content = rsscontent.title + "\n" + " ".join([x for x in the_hashtags])
 
         # UGC will replace shares over time.
         #api_url = 'https://api.linkedin.com/v2/ugcPosts'
