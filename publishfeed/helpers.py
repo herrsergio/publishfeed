@@ -65,6 +65,7 @@ class RSSContentHelper(Helper):
             if word.lower() in word_list:
                 hashtag = "#" + word.lower()
                 hashtags.append(hashtag)
+        hashtags = list(dict.fromkeys(hashtags)) # no duplicates
         return hashtags
 
     def tweet_rsscontent(self, rsscontent):
