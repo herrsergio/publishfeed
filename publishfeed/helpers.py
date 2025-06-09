@@ -8,8 +8,8 @@ from datetime import datetime
 from time import mktime
 from sqlalchemy.sql.expression import func
 from ln_oauth import ln_auth, ln_headers
-from ln_post import ln_user_info, post_2_linkedin, post_2_linkedin_legacy
-
+from ln_post import ln_user_info, post_2_linkedin, post_2_linkedin_legacy, post_2_linkedin_new
+from generate_hashtags_fuzzy import generate_hashtags_fuzzy
 
 class Helper:
     def __init__(self, session, data):
@@ -37,10 +37,14 @@ class FeedSetHelper(Helper):
                         continue
                     item_url = entry.link  # .encode('utf-8')
 
-                    item_date = datetime.fromtimestamp(mktime(entry.published_parsed))
+                    try:
+                        item_date = datetime.fromtimestamp(mktime(entry.published_parsed))
 
-                    item = RSSContent(url=item_url, title=item_title, dateAdded=item_date)
-                    self.session.add(item)
+                        item = RSSContent(url=item_url, title=item_title, dateAdded=item_date)
+                        self.session.add(item)
+                    except AttributeError:
+                        print("The published_parsed attribute is not available")
+                        continue
 
 
 class RSSContentHelper(Helper):
@@ -49,7 +53,7 @@ class RSSContentHelper(Helper):
         # rsscontent = session.query(RSSContent).filter_by(published = 0).filter(RSSContent.dateAdded >
         # '2020-01-01').order_by(RSSContent.title).first()
         rsscontent = session.query(RSSContent).filter_by(published=0).filter(
-            RSSContent.dateAdded > '2022-08-22').order_by(func.random()).first()
+            RSSContent.dateAdded > '2025-03-01').order_by(func.random()).first()
         return rsscontent
 
     def _calculate_tweet_length(self):
@@ -65,7 +69,7 @@ class RSSContentHelper(Helper):
             if word.lower() in word_list:
                 hashtag = "#" + word.lower()
                 hashtags.append(hashtag)
-        hashtags = list(dict.fromkeys(hashtags)) # no duplicates
+        hashtags = list(dict.fromkeys(hashtags)) # Remove duplicates
         return hashtags
 
     def tweet_rsscontent(self, rsscontent):
@@ -80,26 +84,29 @@ class RSSContentHelper(Helper):
         #Hashtags
         hashtag_list = ["agile", "ai", "algorithm", "amazon", "analytics", "api", "architecture", "aurora", "aws", "azure", "bigquery",
                         "blockchain", "botnet", "brand", "chatgpt", "cisco", "cloud", "cloudwatch", "cncf", "coding", "compliance", "containers",
-                        "customer", "data", "database", "deployment", "digital", "docker", "ec2", "economy", "eks", "encryption",
+                        "customer", "data", "database", "deployment", "digital", "docker", "ec2", "economy", "encryption",
                         "engineering", "experts", "fargate", "firewall", "fintech", "forrester", "future",
                         "gartner", "gcp", "git", "github", "government", "google", "health", "healthcare", "ia", "iam", "india",
-                        "infrastructure", "innovation", "jenkins", "kubernetes", "leadership", "location",
-                        "linux", "logging", "management", "maturity", "microsoft", "microservices", "microservice",
-                        "ml", "ml/ai", "mesh", "metaverse", "motivation", "microsoft", "partners", "pod",
+                        "infrastructure", "innovation", "jenkins", "kubernetes", "leadership", "linux", "location",
+                        "logging", "management", "maturity", "microsoft", "microservices", "microservice",
+                        "ml", "ml/ai", "mesh", "metaverse", "motivation", "microsoft", "openai", "partners", "pod",
                         "pods", "powerpoint", "productivity", "pipeline", "proxy", "rds", "robot", "robotics",
                         "s3", "sales", "salesforce", "science", "security", "serverless", "scrum", "sre", "sql", "stateful", "stateless",
-                        "storage", "strategy", "success", "terraform", "technology", "tensorflow", "togaf", "transformation", "twitter",
-                        "vmware", "vpc", "vulnerabilities"]
+                        "storage", "strategy", "success", "terraform", "technology", "tensorflow", "togaf", "transformation", 
+                        "twitter", "vmware", "vpc", "vulnerabilities"]
 
-        the_hashtags = self.generate_hashtags(rsscontent.title, hashtag_list)
+        #the_hashtags = self.generate_hashtags(rsscontent.title, hashtag_list)
+        the_hashtags = generate_hashtags_fuzzy(rsscontent.title)
         content = rsscontent.title + "\n" + " ".join([x for x in the_hashtags])
 
         # UGC will replace shares over time.
         #api_url = 'https://api.linkedin.com/v2/ugcPosts'
-        api_url = 'https://api.linkedin.com/v2/shares'
+        #api_url = 'https://api.linkedin.com/v2/shares'
+        api_url = 'https://api.linkedin.com/rest/posts'
         author = f'urn:li:person:{urn}'
         #post_2_linkedin(rsscontent.title, rsscontent.url, rsscontent.title, author, api_url, linkedin_headers)
-        post_2_linkedin_legacy(rsscontent.title, rsscontent.url, content, author, api_url, linkedin_headers)
+        #post_2_linkedin_legacy(rsscontent.title, rsscontent.url, content, author, api_url, linkedin_headers)
+        post_2_linkedin_new(rsscontent.title, rsscontent.url, content, author, api_url, linkedin_headers)
 
         credentials = self.data['twitter']
         twitter = Twitter(**credentials)
@@ -109,6 +116,7 @@ class RSSContentHelper(Helper):
         tweet_url = rsscontent.url
         tweet_hashtag = self.data['hashtags']
         tweet_text = "{} {} {}".format(tweet_body, tweet_url, tweet_hashtag)
+        # April 14th, Twitter suspended the app, cannot post more tweets
         twitter.update_status(tweet_text)
         rsscontent.published = True
         self.session.flush()

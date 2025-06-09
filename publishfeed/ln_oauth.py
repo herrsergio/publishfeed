@@ -119,7 +119,7 @@ def ln_authorize(api_url, client_id, client_secret, redirect_uri):
     print(f'''
     The Browser will open to ask you to authorize the credentials.\n
     Since we have not setted up a server, you will get the error:\n
-    This site can’t be reached. localhost refused to connect.\n
+    This site can't be reached. localhost refused to connect.\n
     This is normal.\n
     You need to copy the URL where you are being redirected to.\n
     ''')

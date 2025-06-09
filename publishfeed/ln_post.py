@@ -1,6 +1,7 @@
 import os
 import urllib.request
 from urllib.parse import urlparse
+from urllib.parse import urljoin
 
 import requests
 import opengraph_py3
@@ -88,6 +89,51 @@ def post_2_linkedin_legacy(message, link, link_text, author, api_url, headers):
     r.json()
     print(r)
 
+def post_2_linkedin_new(message, link, link_text, author, api_url, headers):
+    thumbnail_url = custom_get_img_from_link(link)
+    image_urn = None
+
+    if thumbnail_url:
+        image_urn = upload_image_and_get_urn(thumbnail_url, author, headers)
+
+    #print("image_urn = "+image_urn)
+
+    article_obj = {
+        "source": link,
+        "title": message,
+        "description": link_text,
+    }
+
+    if image_urn:
+        article_obj["thumbnail"] = image_urn
+
+    post_data = {
+        "author": author,
+        "commentary": link_text,
+        "visibility": "PUBLIC",
+        "distribution": {
+            "feedDistribution": "MAIN_FEED",
+            "targetEntities": [],
+            "thirdPartyDistributionChannels": [],
+        },
+        "content": {
+            "article": article_obj
+        },
+        "lifecycleState": "PUBLISHED",
+        "isReshareDisabledByAuthor": False
+    }
+
+    headers["Linkedin-Version"] = "202505"
+
+    response = requests.post(
+            api_url, 
+            headers=headers, 
+            json=post_data
+    )
+
+    print("LinkedIn post status:", response.status_code)
+    print(response.text)
+
 def get_image_url_from_link(link):
     image_url = ""
     og_link = opengraph_py3.OpenGraph(url=link)
@@ -118,6 +164,46 @@ def custom_get_img_from_link(link):
 
         return image_url
 
+def upload_image_and_get_urn(image_url, author_urn, headers):
+    # 1. Step: Initialize image upload
+    init_payload = {
+        "initializeUploadRequest": {
+            "owner": author_urn
+        }
+    }
+
+    init_resp = requests.post(
+        "https://api.linkedin.com/rest/images?action=initializeUpload",
+        headers={**headers, "LinkedIn-Version": "202505", "Content-Type": "application/json"},
+        json=init_payload
+    )
+
+    if init_resp.status_code != 200:
+        print("Failed to initialize image upload:", init_resp.status_code, init_resp.text)
+        return None
+
+    upload_info = init_resp.json()
+    upload_url = upload_info["value"]["uploadUrl"]
+    image_urn = upload_info["value"]["image"]
+
+    # 2. Step: Download image from source
+    img_resp = requests.get(image_url)
+    if img_resp.status_code != 200:
+        print("Failed to download image:", image_url)
+        return None
+
+    # 3. Step: Upload image bytes to LinkedIn
+    put_resp = requests.put(
+        upload_url,
+        headers={"Content-Type": "image/jpeg"},
+        data=img_resp.content
+    )
+
+    if put_resp.status_code not in (200, 201):
+        print("Failed to upload image to LinkedIn:", put_resp.status_code, put_resp.text)
+        return None
+
+    return image_urn
 
 # Uploading the image to Linkedin did not work
 # Keeping this function, it could be handy later
@@ -161,6 +247,3 @@ def upload_image_linkdin(link, author, headers):
     os.remove(local_image_filename)
 
     return asset
-
-
-
