@@ -4,6 +4,7 @@ import yaml
 import config
 import feedparser
 import re
+import requests
 from datetime import datetime
 from time import mktime
 from sqlalchemy.sql.expression import func
@@ -25,27 +26,43 @@ class FeedSetHelper(Helper):
 
     def get_pages_from_feeds(self):
         feed = FeedSet(self.data)
+        headers = {
+             'User-Agent': (
+                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                 'AppleWebKit/537.36 (KHTML, like Gecko) '
+                 'Chrome/114.0.0.0 Safari/537.36'
+            )
+        }
         for url in feed.urls:
-            parsed_feed = feedparser.parse(url)
-            for entry in parsed_feed.entries:
-                # if feed page not exist, add it as rsscontent
-                q = self.session.query(RSSContent).filter_by(url=entry.link)
-                exists = self.session.query(q.exists()).scalar()  # returns True or False
-                if not exists:
-                    item_title = entry.title
-                    if "squid" in item_title.lower():
-                        continue
-                    item_url = entry.link  # .encode('utf-8')
-
-                    try:
-                        item_date = datetime.fromtimestamp(mktime(entry.published_parsed))
-
-                        item = RSSContent(url=item_url, title=item_title, dateAdded=item_date)
-                        self.session.add(item)
-                    except AttributeError:
-                        print("The published_parsed attribute is not available")
-                        continue
-
+            # feedparser treats as an invalid XML media type and refuses to parse it
+            # feedparser respects the Content-Type header to decide if the response is an XML feed.
+            # When it sees text/plain, it assumes the content is just plain text and not a feed,
+            # so it raises that error.
+            # Overriding the Content-Type header by fetching the feed manually and
+            # passing the raw content to feedparser
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                parsed_feed = feedparser.parse(url)
+                for entry in parsed_feed.entries:
+                    # if feed page not exist, add it as rsscontent
+                    q = self.session.query(RSSContent).filter_by(url=entry.link)
+                    exists = self.session.query(q.exists()).scalar()  # returns True or False
+                    if not exists:
+                        item_title = entry.title
+                        if "squid" in item_title.lower():
+                            continue
+                        item_url = entry.link  # .encode('utf-8')
+    
+                        try:
+                            item_date = datetime.fromtimestamp(mktime(entry.published_parsed))
+    
+                            item = RSSContent(url=item_url, title=item_title, dateAdded=item_date)
+                            self.session.add(item)
+                        except AttributeError:
+                            print("The published_parsed attribute is not available")
+                            continue
+            else:
+                continue
 
 class RSSContentHelper(Helper):
 
