@@ -3,7 +3,7 @@ import re
 
 def generate_hashtags_fuzzy(title):
     keywords_to_hashtags = {
-                "API": "#API",
+        "API": "#API",
         "AWS": "#AWS",
         "Amazon Web Services": "#AWS",
         "Aurora": "#Aurora",
