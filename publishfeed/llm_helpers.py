@@ -324,22 +324,38 @@ def extract_article_summary(url):
 
 
 def summarize_text(text, max_tokens=200):
+    """Summarize article text for social media with CTAs, emojis, and hashtags."""
     if not text:
         return ""
 
     try:
+        prompt = """Create an engaging social media post (max 250 characters) from this article. 
+
+REQUIREMENTS:
+- Use a friendly, casual technical tone
+- MUST include relevant emojis (2-4 emojis)
+- MUST end with a CTA like "Worth reading!", "Check it out!", "Don't miss this!", or "Great insights!"
+- MUST include 2-3 relevant hashtags based on the topic (e.g., #AI, #MachineLearning, #Tech, #Programming, #DataScience, #WebDev, #DevOps, #Cybersecurity, #Cloud, #Innovation)
+- Keep it under 250 characters total
+- Make it engaging and clickable
+
+FORMAT: [Summary] [Emojis] [CTA] [Hashtags]
+
+Article content:
+{text}"""
+
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
                 {
                     "role": "user",
-                    "content": f"Summarize this article for a Twitter post (250 chars max) using a friendly casual techical tone, add emojis and hashtags if you consider good option:\n\n{text}",
+                    "content": prompt.format(text=text),
                 }
             ],
-            temperature=0.7,
+            temperature=0.8,
             max_tokens=max_tokens,
         )
         return response["choices"][0]["message"]["content"].strip()
     except Exception as e:
-        logging.error(f"LLM summarization failed: {e}")
+        logging.error("LLM summarization failed: %s", str(e))
         return ""
