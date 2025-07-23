@@ -44,7 +44,7 @@ def summarize_text(text, max_tokens=200):
             model="gpt-3.5-turbo",
             messages=[{
                 "role": "user",
-                "content": f"Summarize this article in 1-3 sentences using a friendly casual techical tone, add emojis if needed, for a Twitter post:\n\n{text}"
+                "content": f"Summarize this article for a Twitter post (250 chars max) using a friendly casual techical tone, add emojis and hashtags if you consider good option:\n\n{text}"
             }],
             temperature=0.7,
             max_tokens=max_tokens,
