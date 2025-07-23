@@ -1,16 +1,22 @@
-from models import RSSContent, FeedSet
-from twitter import Twitter
-import yaml
-import config
-import feedparser
 import re
-import requests
 from datetime import datetime
 from time import mktime
-from sqlalchemy.sql.expression import func
-from ln_oauth import ln_auth, ln_headers
-from ln_post import ln_user_info, post_2_linkedin, post_2_linkedin_legacy, post_2_linkedin_new
+
+import config
+import feedparser
+import requests
+import yaml
 from generate_hashtags_fuzzy import generate_hashtags_fuzzy
+from ln_oauth import ln_auth, ln_headers
+from ln_post import (
+    ln_user_info,
+    post_2_linkedin_new,
+)
+from llm_helpers import extract_article_text, summarize_text
+from models import FeedSet, RSSContent
+from sqlalchemy.sql.expression import func
+from twitter import Twitter
+
 
 class Helper:
     def __init__(self, session, data):
@@ -98,42 +104,31 @@ class RSSContentHelper(Helper):
         user_info = ln_user_info(linkedin_headers)
         urn = user_info['id']
 
-        #Hashtags
-        hashtag_list = ["agile", "ai", "algorithm", "amazon", "analytics", "api", "architecture", "aurora", "aws", "azure", "bigquery",
-                        "blockchain", "botnet", "brand", "chatgpt", "cisco", "cloud", "cloudwatch", "cncf", "coding", "compliance", "containers",
-                        "customer", "data", "database", "deployment", "digital", "docker", "ec2", "economy", "encryption",
-                        "engineering", "experts", "fargate", "firewall", "fintech", "forrester", "future",
-                        "gartner", "gcp", "git", "github", "government", "google", "health", "healthcare", "ia", "iam", "india",
-                        "infrastructure", "innovation", "jenkins", "kubernetes", "leadership", "linux", "location",
-                        "logging", "management", "maturity", "microsoft", "microservices", "microservice",
-                        "ml", "ml/ai", "mesh", "metaverse", "motivation", "microsoft", "openai", "partners", "pod",
-                        "pods", "powerpoint", "productivity", "pipeline", "proxy", "rds", "robot", "robotics",
-                        "s3", "sales", "salesforce", "science", "security", "serverless", "scrum", "sre", "sql", "stateful", "stateless",
-                        "storage", "strategy", "success", "terraform", "technology", "tensorflow", "togaf", "transformation", 
-                        "twitter", "vmware", "vpc", "vulnerabilities"]
-
-        #the_hashtags = self.generate_hashtags(rsscontent.title, hashtag_list)
         the_hashtags = generate_hashtags_fuzzy(rsscontent.title)
         content = rsscontent.title + "\n" + " ".join([x for x in the_hashtags])
 
-        # UGC will replace shares over time.
-        #api_url = 'https://api.linkedin.com/v2/ugcPosts'
-        #api_url = 'https://api.linkedin.com/v2/shares'
         api_url = 'https://api.linkedin.com/rest/posts'
         author = f'urn:li:person:{urn}'
-        #post_2_linkedin(rsscontent.title, rsscontent.url, rsscontent.title, author, api_url, linkedin_headers)
-        #post_2_linkedin_legacy(rsscontent.title, rsscontent.url, content, author, api_url, linkedin_headers)
-        post_2_linkedin_new(rsscontent.title, rsscontent.url, content, author, api_url, linkedin_headers)
-
+        
         credentials = self.data['twitter']
         twitter = Twitter(**credentials)
 
         body_length = self._calculate_tweet_length()
-        tweet_body = content[:body_length]
         tweet_url = rsscontent.url
         tweet_hashtag = self.data['hashtags']
+        
+        # Use OpenAI to generate a summary
+        article_text = extract_article_text(rsscontent.url)
+        if article_text:
+            summary = summarize_text(article_text)
+            post_2_linkedin_new(rsscontent.title, rsscontent.url, summary, author, api_url, linkedin_headers)
+            tweet_body = summary[:body_length]
+        else:
+            post_2_linkedin_new(rsscontent.title, rsscontent.url, content, author, api_url, linkedin_headers)
+            tweet_body = content[:body_length]
+        
         tweet_text = "{} {} {}".format(tweet_body, tweet_url, tweet_hashtag)
-        # April 14th, Twitter suspended the app, cannot post more tweets
+        
         twitter.update_status(tweet_text)
         rsscontent.published = True
         self.session.flush()

@@ -1,11 +1,9 @@
 import os
 import urllib.request
-from urllib.parse import urlparse
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
-import requests
 import opengraph_py3
-
+import requests
 from ln_oauth import ln_auth, ln_headers
 
 # credentials = '/home/ubuntu/publishfeed/publishfeed/ln_credentials.json'
