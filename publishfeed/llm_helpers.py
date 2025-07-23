@@ -335,9 +335,9 @@ REQUIREMENTS:
 - Use a friendly, casual technical tone
 - MUST include relevant emojis (2-4 emojis)
 - MUST end with a CTA like "Worth reading!", "Check it out!", "Don't miss this!", or "Great insights!"
-- MUST include 2-3 relevant hashtags based on the topic (e.g., #AI, #MachineLearning, #Tech, #Programming, #DataScience, #WebDev, #DevOps, #Cybersecurity, #Cloud, #Innovation)
+- MUST include relevant hashtags based on the topic (e.g., #AI, #MachineLearning, #Tech, #Programming, #DataScience, #WebDev, #DevOps, #Cybersecurity, #Cloud, #Innovation)
 - Keep it under 250 characters total
-- Make it engaging and clickable
+- Make it engaging
 
 FORMAT: [Summary] [Emojis] [CTA] [Hashtags]
 
