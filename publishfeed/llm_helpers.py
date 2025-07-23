@@ -1,8 +1,12 @@
 import logging
 import os
+import time
+from urllib.parse import urlparse
 
 import newspaper
 import openai
+import requests
+from bs4 import BeautifulSoup
 from newspaper import Config, settings
 
 
@@ -21,6 +25,73 @@ def load_openai_key():
 openai.api_key = load_openai_key()
 
 
+def _extract_with_requests(url):
+    """Fallback extraction using requests and BeautifulSoup."""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Cache-Control": "max-age=0",
+    }
+
+    try:
+        # Add a small delay to appear more human-like
+        time.sleep(1)
+
+        session = requests.Session()
+        response = session.get(url, headers=headers, timeout=15, allow_redirects=True)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.content, "html.parser")
+
+        # Remove script and style elements
+        for script in soup(["script", "style", "nav", "header", "footer", "aside"]):
+            script.decompose()
+
+        # Try to find main content areas
+        content_selectors = [
+            "article",
+            '[role="main"]',
+            "main",
+            ".content",
+            ".post-content",
+            ".entry-content",
+            ".article-content",
+            ".post-body",
+            ".story-body",
+        ]
+
+        text = ""
+        for selector in content_selectors:
+            elements = soup.select(selector)
+            if elements:
+                text = " ".join([elem.get_text(strip=True) for elem in elements])
+                if len(text) > 200:
+                    break
+
+        # Fallback to body if no specific content found
+        if not text or len(text) < 200:
+            body = soup.find("body")
+            if body:
+                text = body.get_text(strip=True)
+
+        # Clean up the text
+        lines = [line.strip() for line in text.split("\n") if line.strip()]
+        text = " ".join(lines)
+
+        return text if len(text) > 100 else ""
+
+    except Exception as e:
+        logging.warning("Requests fallback failed: %s", str(e))
+        return ""
+
+
 def extract_article_text(url):
     """Extract article text from URL with multiple fallback strategies."""
     user_agents = [
@@ -31,6 +102,7 @@ def extract_article_text(url):
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15",
     ]
 
+    # First try newspaper with different user agents
     for i, user_agent in enumerate(user_agents):
         try:
             config = Config()
@@ -43,18 +115,26 @@ def extract_article_text(url):
             article.parse()
 
             if article.text and len(article.text.strip()) > 100:
-                logging.info("Successfully extracted article with user agent %d", i + 1)
-                return article.text
-            else:
-                logging.warning(
-                    "Article text too short or empty with user agent %d", i + 1
+                logging.info(
+                    "Successfully extracted article with newspaper (user agent %d)",
+                    i + 1,
                 )
+                return article.text
+
+            logging.warning("Article text too short or empty with user agent %d", i + 1)
 
         except Exception as e:
             logging.warning(
                 "Failed to extract article with user agent %d: %s", i + 1, str(e)
             )
             continue
+
+    # Fallback to requests + BeautifulSoup
+    logging.info("Trying requests fallback for URL: %s", url)
+    text = _extract_with_requests(url)
+    if text:
+        logging.info("Successfully extracted article with requests fallback")
+        return text
 
     logging.error("All extraction attempts failed for URL: %s", url)
     return ""
@@ -69,6 +149,7 @@ def extract_article_summary(url):
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0",
     ]
 
+    # First try newspaper with different user agents
     for i, user_agent in enumerate(user_agents):
         try:
             settings.MAX_SUMMARY_SENT = 3
@@ -83,16 +164,30 @@ def extract_article_summary(url):
             article.nlp()
 
             if article.summary and len(article.summary.strip()) > 50:
-                logging.info("Successfully extracted summary with user agent %d", i + 1)
+                logging.info(
+                    "Successfully extracted summary with newspaper (user agent %d)",
+                    i + 1,
+                )
                 return article.summary
-            else:
-                logging.warning("Summary too short or empty with user agent %d", i + 1)
+
+            logging.warning("Summary too short or empty with user agent %d", i + 1)
 
         except Exception as e:
             logging.warning(
                 "Failed to extract summary with user agent %d: %s", i + 1, str(e)
             )
             continue
+
+    # Fallback: extract full text and create summary from first few sentences
+    logging.info("Trying text extraction fallback for summary")
+    text = _extract_with_requests(url)
+    if text:
+        # Create a simple summary from first 3 sentences
+        sentences = text.split(". ")[:3]
+        summary = ". ".join(sentences)
+        if len(summary) > 50:
+            logging.info("Successfully created summary from extracted text")
+            return summary
 
     logging.error("All summary extraction attempts failed for URL: %s", url)
     return ""
