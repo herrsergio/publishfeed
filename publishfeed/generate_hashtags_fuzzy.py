@@ -71,7 +71,7 @@ def generate_hashtags_fuzzy(title):
         "Terraform": "#Terraform",
         "TOFAG": "#TOGAF",
         "Trainium": "#Trainium",
-        "transformers": "#transofrmers",
+        "transformers": "#transformers",
     }
 
     hashtags = set()
@@ -89,4 +89,5 @@ def generate_hashtags_fuzzy(title):
                 hashtags.add(hashtag)
 
     return list(hashtags)
+
 
