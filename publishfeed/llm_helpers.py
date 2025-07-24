@@ -337,6 +337,7 @@ REQUIREMENTS:
 - MUST end with a CTA like "Worth reading!", "Check it out!", "Don't miss this!", or "Great insights!"
 - MUST include relevant hashtags based on the topic (e.g., #AI, #MachineLearning, #Tech, #Programming, #DataScience, #WebDev, #DevOps, #Cybersecurity, #Cloud, #Innovation)
 - Keep it under 250 characters total
+- These are not owned articles, so avoid using "our", "mine", "my"
 - Make it engaging
 
 FORMAT: [Summary] [Emojis] [CTA] [Hashtags]
