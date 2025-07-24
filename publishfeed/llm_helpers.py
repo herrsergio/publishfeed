@@ -323,7 +323,7 @@ def extract_article_summary(url):
     return ""
 
 
-def summarize_text(text, max_tokens=200):
+def summarize_text(text, max_tokens=250):
     """Summarize article text for social media with CTAs, emojis, and hashtags."""
     if not text:
         return ""
