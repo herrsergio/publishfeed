@@ -157,7 +157,7 @@ class RSSContentHelper(Helper):
             else:
                 tweet_body = summary
 
-            tweet_text = "{}\n{}".format(tweet_body, tweet_url)
+            tweet_text = "{} \n\n{} ".format(tweet_body, tweet_url)
         else:
             post_2_linkedin_new(
                 rsscontent.title,
