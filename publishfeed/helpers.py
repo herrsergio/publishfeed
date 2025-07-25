@@ -7,12 +7,9 @@ import feedparser
 import requests
 import yaml
 from generate_hashtags_fuzzy import generate_hashtags_fuzzy
-from ln_oauth import ln_auth, ln_headers
-from ln_post import (
-    ln_user_info,
-    post_2_linkedin_new,
-)
 from llm_helpers import extract_article_text, summarize_text
+from ln_oauth import ln_auth, ln_headers
+from ln_post import ln_user_info, post_2_linkedin_new
 from models import FeedSet, RSSContent
 from sqlalchemy.sql.expression import func
 from twitter import Twitter
@@ -160,7 +157,7 @@ class RSSContentHelper(Helper):
             else:
                 tweet_body = summary
 
-            tweet_text = f"{tweet_body} {tweet_url}"
+            tweet_text = "{} {}".format(tweet_body, tweet_url)
         else:
             post_2_linkedin_new(
                 rsscontent.title,
@@ -174,7 +171,7 @@ class RSSContentHelper(Helper):
             # For fallback: use original logic with hashtags
             body_length = self._calculate_max_tweet_body_length(include_hashtags=True)
             tweet_body = content[:body_length]
-            tweet_text = f"{tweet_body} {tweet_url} {tweet_hashtag}"
+            tweet_text = "{} {} {}".format(tweet_body, tweet_url, tweet_hashtag)
 
         # Final safety check to ensure tweet doesn't exceed 280 characters
         if len(tweet_text) > config.TWEET_MAX_LENGTH:
