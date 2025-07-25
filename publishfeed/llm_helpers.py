@@ -2,7 +2,7 @@ import logging
 import os
 import random
 import time
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
 import newspaper
 import openai
