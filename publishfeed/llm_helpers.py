@@ -336,7 +336,7 @@ REQUIREMENTS:
 - COULD include relevant emojis (2-4 emojis) if needed
 - MUST include relevant hashtags based on the topic (e.g., #AI, #MachineLearning, #Tech, #Programming, #DataScience, #WebDev, #DevOps, #Cybersecurity, #Cloud, #Innovation)
 - Keep it under 250 characters total
-- These are not owned articles, so avoid using "our", "mine", "my"
+- These are not owned articles, so MUST avoid using "our", "mine", "my"
 - Make it engaging
 
 FORMAT: [Summary] [Emojis] [CTA] [Hashtags]
