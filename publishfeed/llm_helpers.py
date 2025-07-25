@@ -332,9 +332,8 @@ def summarize_text(text, max_tokens=250):
         prompt = """Create an engaging social media post (max 250 characters) from this article. 
 
 REQUIREMENTS:
-- Use a friendly, casual technical tone
-- MUST include relevant emojis (2-4 emojis)
-- MUST end with a CTA like "Worth reading!", "Check it out!", "Don't miss this!", or "Great insights!"
+- Use a casual technical tone
+- COULD include relevant emojis (2-4 emojis) if needed
 - MUST include relevant hashtags based on the topic (e.g., #AI, #MachineLearning, #Tech, #Programming, #DataScience, #WebDev, #DevOps, #Cybersecurity, #Cloud, #Innovation)
 - Keep it under 250 characters total
 - These are not owned articles, so avoid using "our", "mine", "my"
