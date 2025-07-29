@@ -173,11 +173,6 @@ class RSSContentHelper(Helper):
             tweet_body = content[:body_length]
             tweet_text = "{} {} {}".format(tweet_body, tweet_url, tweet_hashtag)
 
-        # Final safety check to ensure tweet doesn't exceed 280 characters
-        # if len(tweet_text) > config.TWEET_MAX_LENGTH:
-        # Emergency truncation - this shouldn't happen with proper calculation
-        #    tweet_text = tweet_text[: config.TWEET_MAX_LENGTH - 3] + "..."
-
         twitter.update_status(tweet_text)
         rsscontent.published = True
         self.session.flush()

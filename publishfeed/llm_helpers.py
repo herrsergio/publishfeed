@@ -337,9 +337,8 @@ REQUIREMENTS:
 - MUST include relevant hashtags based on the topic (e.g., #AI, #MachineLearning, #Tech, #Programming, #DataScience, #WebDev, #DevOps, #Cybersecurity, #Cloud, #Innovation)
 - Keep it under 250 characters total
 - These are not owned articles, so MUST avoid using "our", "mine", "my"
-- Make it engaging
 
-FORMAT: [Summary] [Emojis] [CTA] [Hashtags]
+FORMAT: [Summary] [Emojis] [Hashtags]
 
 Article content:
 {text}"""
