@@ -333,6 +333,7 @@ def summarize_text(text, max_tokens=250):
 
 REQUIREMENTS:
 - Use a casual technical tone
+- Avoid the usage of "Exciting news!"
 - COULD include relevant emojis (2-4 emojis) if needed
 - MUST include relevant hashtags based on the topic (e.g., #AI, #MachineLearning, #Tech, #Programming, #DataScience, #WebDev, #DevOps, #Cybersecurity, #Cloud, #Innovation)
 - Keep it under 250 characters total
