@@ -80,7 +80,7 @@ class RSSContentHelper(Helper):
         rsscontent = (
             session.query(RSSContent)
             .filter_by(published=0)
-            .filter(RSSContent.dateAdded > "2025-03-01")
+            .filter(RSSContent.dateAdded > "2025-07-01")
             .order_by(func.random())
             .first()
         )
