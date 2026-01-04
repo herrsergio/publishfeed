@@ -1,2 +1,14 @@
 .idea/
 env/
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# AWS CDK
+cdk.out/
+.cdk.staging/
+
