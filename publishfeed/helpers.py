@@ -40,25 +40,29 @@ class FeedSetHelper(Helper):
         new_items = []
 
         for url in urls:
+            print(f"  Fetching URL: {url}")
             try:
                 response = requests.get(url, headers=headers, timeout=10)
                 if response.status_code == 200:
                     parsed_feed = feedparser.parse(response.content)
+                    print(f"    - Parsed {len(parsed_feed.entries)} entries")
                     
                     for entry in parsed_feed.entries:
                         item_url = entry.link
                         
                         # Check if exists in DynamoDB
                         if self.db_ops.check_rss_item_exists(item_url):
+                            # print(f"      - Skipped (Exists): {item_url}")
                             continue
                             
                         item_title = entry.title
                         if "squid" in item_title.lower():
+                            print(f"      - Skipped (Filter 'squid'): {item_title}")
                             continue
 
                         try:
                             # Parse date
-                            if hasattr(entry, 'published_parsed'):
+                            if hasattr(entry, 'published_parsed') and entry.published_parsed:
                                 item_date = datetime.fromtimestamp(mktime(entry.published_parsed))
                             else:
                                 item_date = datetime.now()
@@ -71,19 +75,23 @@ class FeedSetHelper(Helper):
                                 'feed_id': self.feed_id # Track source feed
                             }
                             new_items.append(item)
+                            print(f"      + New Item: {item_title}")
                             
                         except AttributeError as e:
-                            print(f"Error parsing entry: {e}")
+                            print(f"      ! Error parsing entry: {e}")
                             continue
+                else:
+                    print(f"    ! Failed to fetch {url}. Status: {response.status_code}")
             except Exception as e:
-                print(f"Error fetching URL {url}: {e}")
+                print(f"    ! Error fetching URL {url}: {e}")
                 continue
 
         if new_items:
-            print(f"Saving {len(new_items)} new items for {self.feed_id}")
+            print(f"  Saving {len(new_items)} new items for {self.feed_id}...")
             self.db_ops.batch_write_rss_items(new_items)
+            print(f"  Saved {len(new_items)} items.")
         else:
-            print(f"No new items for {self.feed_id}")
+            print(f"  No new items found for {self.feed_id} (or all were filtered/existed).")
 
 
 class RSSContentHelper(Helper):

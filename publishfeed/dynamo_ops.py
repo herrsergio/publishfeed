@@ -17,19 +17,33 @@ class DynamoDBOps:
         Write multiple RSS items to the database.
         Items should be a list of dicts.
         """
-        with self.rss_table.batch_writer() as batch:
-            for item in items:
-                # Ensure status is set
-                if 'status' not in item:
-                    item['status'] = 'unpublished'
-                batch.put_item(Item=item)
+        if not items:
+            return
+            
+        print(f"DynamoDB: Writing batch of {len(items)} items...")
+        try:
+            with self.rss_table.batch_writer() as batch:
+                for item in items:
+                    # Ensure status is set
+                    if 'status' not in item:
+                        item['status'] = 'unpublished'
+                    batch.put_item(Item=item)
+            print("DynamoDB: Batch write successful")
+        except Exception as e:
+            print(f"DynamoDB: Error in batch_write_rss_items: {e}")
 
     def check_rss_item_exists(self, url):
         """
         Check if an RSS item already exists by URL.
         """
-        response = self.rss_table.get_item(Key={'url': url})
-        return 'Item' in response
+        try:
+            response = self.rss_table.get_item(Key={'url': url})
+            exists = 'Item' in response
+            # print(f"DynamoDB: Check exists {url} -> {exists}") # Verbose
+            return exists
+        except Exception as e:
+            print(f"DynamoDB: Error checking item existence {url}: {e}")
+            return False
 
     def get_random_unpublished_item(self, min_date=None):
         """

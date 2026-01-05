@@ -344,13 +344,17 @@ def summarize_text(text, max_tokens=250):
     try:
         prompt = """Create a concise, engaging social media post (max 250 characters) summarizing the key insight of this article.
 
-REQUIREMENTS:
+CRITICAL INSTRUCTIONS:
+- START IMMEDIATELY with the insight or fact.
+- BANNED STARTING PHRASES: "Exciting news!", "Just announced", "Check this out", "Thrilled to share".
+- NO MARKETING FLUFF. Go straight to the point.
+- STRICTLY FORBIDDEN: First-person pronouns (I, we, my, our, mine, us).
 - Tone: Casual but professional/technical.
-- STRICTLY FORBIDDEN: Do not use first-person pronouns (I, we, my, our, mine, us). Write from a neutral third-person perspective.
-- Avoid clichés like "Exciting news!" or "Check this out!".
-- Include 2-4 relevant emojis.
-- Include relevant hashtags (e.g., #AI, #Tech, #Cloud, #DevOps, etc.).
 - HARD LIMIT: Under 250 characters total.
+
+INCLUDES:
+- 2-4 relevant emojis.
+- Relevant hashtags (e.g., #AI, #Tech, #Cloud, #DevOps, etc.).
 
 FORMAT: [Summary] [Emojis] [Hashtags]
 
