@@ -51,7 +51,8 @@ def sync_feeds(region, table_name):
         config_item = {
             'feed_id': feed_id,
             'urls': data.get('urls', []),
-            'hashtags': data.get('hashtags', '')
+            'hashtags': data.get('hashtags', ''),
+            'min_date': data.get('min_date', '') # Optional date filter
         }
         
         config_table.put_item(Item=config_item)

@@ -7,3 +7,4 @@ simpleitrocks: #twitter handler
   urls:
     - #https://simpleit.rocks/feed
   hashtags: ''
+  min_date: '2025-01-01' # Optional: Ignore articles older than this date

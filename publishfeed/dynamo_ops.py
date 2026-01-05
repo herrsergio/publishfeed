@@ -31,14 +31,19 @@ class DynamoDBOps:
         response = self.rss_table.get_item(Key={'url': url})
         return 'Item' in response
 
-    def get_random_unpublished_item(self):
+    def get_random_unpublished_item(self, min_date=None):
         """
         Get a random unpublished item.
         Using the GSI StatusIndex.
+        If min_date is provided (YYYY-MM-DD), filter items added after that date.
         """
+        key_condition = Key('status').eq('unpublished')
+        if min_date:
+            key_condition = key_condition & Key('dateAdded').gt(min_date)
+
         response = self.rss_table.query(
             IndexName='StatusIndex',
-            KeyConditionExpression=Key('status').eq('unpublished'),
+            KeyConditionExpression=key_condition,
             Limit=50 # limit to avoid scanning too many if simpler
         )
         items = response.get('Items', [])

@@ -89,7 +89,8 @@ class FeedSetHelper(Helper):
 class RSSContentHelper(Helper):
     def tweet_rsscontent(self):
         # 1. Get a random unpublished item
-        rsscontent = self.db_ops.get_random_unpublished_item()
+        min_date = self.feed_config.get('min_date')
+        rsscontent = self.db_ops.get_random_unpublished_item(min_date)
         if not rsscontent:
             print("No unpublished items found.")
             return

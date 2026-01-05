@@ -79,6 +79,7 @@ TechnologyFeeds: # Feed ID
   urls:
     - https://simpleit.rocks/feed
   hashtags: '#TechTutorials'
+  min_date: '2025-01-01' # Optional: Ignore articles older than this date
 ```
 
 ## Credentials
