@@ -108,9 +108,9 @@ class RssFeedStack(Stack):
         )
         rule_fetch.add_target(targets.LambdaFunction(self.fetch_function))
 
-        # 2. Publish Every 2 Hours
+        # 2. Publish Every 1 Hours
         rule_publish = events.Rule(
             self, "RulePublishEvery2Hours",
-            schedule=events.Schedule.rate(Duration.hours(2))
+            schedule=events.Schedule.rate(Duration.hours(1))
         )
         rule_publish.add_target(targets.LambdaFunction(self.publish_function))
