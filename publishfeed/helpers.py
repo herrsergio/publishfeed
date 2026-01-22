@@ -1,33 +1,34 @@
 import re
+import requests
+import feedparser
 from datetime import datetime
 from time import mktime
 
 import config
-import feedparser
-import requests
-import yaml
+from dynamo_ops import DynamoDBOps
+from config_loader import ConfigLoader
 from generate_hashtags_fuzzy import generate_hashtags_fuzzy
 from llm_helpers import extract_article_text, summarize_text
-from ln_oauth import ln_auth, ln_headers
+from ln_oauth import ln_headers
 from ln_post import ln_user_info, post_2_linkedin_new
-from models import FeedSet, RSSContent
-from sqlalchemy.sql.expression import func
 from twitter import Twitter
 
-
 class Helper:
-    def __init__(self, session, data):
-        self.session = session
-        if isinstance(data, dict):
-            self.data = data
-        else:
-            with open("/home/ubuntu/publishfeed/publishfeed/feeds.yml", "r") as f:
-                self.data = yaml.safe_load(f)[data]
-
+    def __init__(self, feed_id):
+        self.feed_id = feed_id
+        self.config_loader = ConfigLoader()
+        self.db_ops = DynamoDBOps()
+        
+        # Load config from DynamoDB
+        self.feed_config = self.config_loader.load_feed_config(feed_id)
+        if not self.feed_config:
+            print(f"Warning: No configuration found for feed_id: {feed_id}")
+            self.feed_config = {'urls': [], 'hashtags': ''}
 
 class FeedSetHelper(Helper):
     def get_pages_from_feeds(self):
-        feed = FeedSet(self.data)
+        urls = self.feed_config.get('urls', [])
+        
         headers = {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -35,66 +36,190 @@ class FeedSetHelper(Helper):
                 "Chrome/114.0.0.0 Safari/537.36"
             )
         }
-        for url in feed.urls:
-            # feedparser treats as an invalid XML media type and refuses to parse it
-            # feedparser respects the Content-Type header to decide if the response is an XML feed.
-            # When it sees text/plain, it assumes the content is just plain text and not a feed,
-            # so it raises that error.
-            # Overriding the Content-Type header by fetching the feed manually and
-            # passing the raw content to feedparser
-            response = requests.get(url, headers=headers, timeout=10)
-            if response.status_code == 200:
-                parsed_feed = feedparser.parse(url)
-                for entry in parsed_feed.entries:
-                    # if feed page not exist, add it as rsscontent
-                    q = self.session.query(RSSContent).filter_by(url=entry.link)
-                    exists = self.session.query(
-                        q.exists()
-                    ).scalar()  # returns True or False
-                    if not exists:
+        
+        new_items = []
+
+        for url in urls:
+            print(f"  Fetching URL: {url}")
+            try:
+                response = requests.get(url, headers=headers, timeout=10)
+                if response.status_code == 200:
+                    parsed_feed = feedparser.parse(response.content)
+                    print(f"    - Parsed {len(parsed_feed.entries)} entries")
+                    
+                    for entry in parsed_feed.entries:
+                        item_url = entry.link
+                        
+                        # Check if exists in DynamoDB
+                        if self.db_ops.check_rss_item_exists(item_url):
+                            # print(f"      - Skipped (Exists): {item_url}")
+                            continue
+                            
                         item_title = entry.title
                         if "squid" in item_title.lower():
+                            print(f"      - Skipped (Filter 'squid'): {item_title}")
                             continue
-                        item_url = entry.link  # .encode('utf-8')
 
                         try:
-                            item_date = datetime.fromtimestamp(
-                                mktime(entry.published_parsed)
-                            )
+                            # Parse date
+                            if hasattr(entry, 'published_parsed') and entry.published_parsed:
+                                item_date = datetime.fromtimestamp(mktime(entry.published_parsed))
+                            else:
+                                item_date = datetime.now()
 
-                            item = RSSContent(
-                                url=item_url, title=item_title, dateAdded=item_date
-                            )
-                            self.session.add(item)
-                        except AttributeError:
-                            print("The published_parsed attribute is not available")
+                            item = {
+                                'url': item_url,
+                                'title': item_title,
+                                'dateAdded': item_date.isoformat(), # DynamoDB needs string
+                                'status': 'unpublished',
+                                'feed_id': self.feed_id # Track source feed
+                            }
+                            new_items.append(item)
+                            print(f"      + New Item: {item_title}")
+                            
+                        except AttributeError as e:
+                            print(f"      ! Error parsing entry: {e}")
                             continue
-            else:
+                else:
+                    print(f"    ! Failed to fetch {url}. Status: {response.status_code}")
+            except Exception as e:
+                print(f"    ! Error fetching URL {url}: {e}")
                 continue
+
+        if new_items:
+            print(f"  Saving {len(new_items)} new items for {self.feed_id}...")
+            self.db_ops.batch_write_rss_items(new_items)
+            print(f"  Saved {len(new_items)} items.")
+        else:
+            print(f"  No new items found for {self.feed_id} (or all were filtered/existed).")
 
 
 class RSSContentHelper(Helper):
-    def get_oldest_unpublished_rsscontent(self, session):
-        # rsscontent = session.query(RSSContent).filter_by(published = 0).filter(RSSContent.dateAdded >
-        # '2020-01-01').order_by(RSSContent.title).first()
-        rsscontent = (
-            session.query(RSSContent)
-            .filter_by(published=0)
-            .filter(RSSContent.dateAdded > "2025-08-01")
-            .order_by(func.random())
-            .first()
-        )
-        return rsscontent
+    def tweet_rsscontent(self):
+        # 1. Get a random unpublished item
+        min_date = self.feed_config.get('min_date')
+        rsscontent = self.db_ops.get_random_unpublished_item(min_date)
+        if not rsscontent:
+            print("No unpublished items found.")
+            return
 
-    def generate_hashtags(self, string, word_list):
-        words = re.findall(r"\b\w+\b", string)  # Get all words from the string
-        hashtags = []
-        for word in words:
-            if word.lower() in word_list:
-                hashtag = "#" + word.lower()
-                hashtags.append(hashtag)
-        hashtags = list(dict.fromkeys(hashtags))  # Remove duplicates
-        return hashtags
+        print(f"Processing: {rsscontent['title']}")
+
+        # 2. Get Secrets (Twitter Keys)
+        secrets = self.config_loader.load_secrets(self.feed_id)
+        if not secrets:
+            print(f"No secrets found for {self.feed_id}. Cannot post.")
+            return
+            
+        # LinkedIn Token (Assume needed? The old code used ln_credentials.json)
+        # For this migration, we are focusing on migrating the 'feeds.yml' secrets (Twitter).
+        # But the code uses LinkedIn too. 
+        # Ideally, we should store LinkedIn Token in SSM too. 
+        # For now, let's assume the user has migrated LinkedIn logic effectively or we skip it if missing.
+        # Actually, let's look at `ln_auth` again. It reads from file. 
+        # We need to adapt this. 
+        # For simplistic migration, I'll comment out LinkedIn part or assume token is passed.
+        # Let's try to get LinkedIn token from SSM as well if we saved it there?
+        # The current plan didn't explicitly say "migrate LinkedIn token to SSM" but it implied strict separation.
+        # I'll stick to Twitter for now to match `feeds.yml` migration which was the request.
+        # But wait, `tweet_rsscontent` in original files DOES post to LinkedIn.
+        # I'll try to keep it functioning if I can.
+        
+        # ... (Continuing with Twitter logic) ...
+        
+        twitter = Twitter(**secrets)
+
+        tweet_url = rsscontent['url']
+        tweet_hashtag = self.feed_config.get('hashtags', '')
+        
+        # Generate hashtags
+        the_hashtags = generate_hashtags_fuzzy(rsscontent['title'])
+        content = rsscontent['title'] + "\n" + " ".join(list(the_hashtags))
+
+        # OpenAI Summary
+        article_text = extract_article_text(rsscontent['url'])
+        tweet_text = ""
+        
+        if article_text:
+            summary = summarize_text(article_text)
+            
+            # Post to LinkedIn 
+            ln_secrets = self.config_loader.load_linkedin_secrets()
+            if ln_secrets:
+                try:
+                    # We expect ln_secrets to have 'access_token'
+                    # Or we might need to adapt ln_headers to accept the token directly
+                    # The original ln_headers took access_token as arg.
+                    access_token = ln_secrets.get('access_token')
+                    if access_token:
+                        linkedin_headers = ln_headers(access_token)
+                        user_info = ln_user_info(linkedin_headers)
+                        urn = user_info['id']
+                        author = f"urn:li:person:{urn}"
+                        api_url = "https://api.linkedin.com/rest/posts"
+                        
+                        post_2_linkedin_new(
+                            rsscontent['title'],
+                            rsscontent['url'],
+                            summary,
+                            author,
+                            api_url,
+                            linkedin_headers
+                        )
+                        print("Posted to LinkedIn.")
+                    else:
+                        print("LinkedIn access_token not found in secrets.")
+                except Exception as e:
+                    print(f"Error posting to LinkedIn: {e}")
+            
+            max_body_length = self._calculate_max_tweet_body_length(include_hashtags=False)
+            if len(summary) > max_body_length:
+                tweet_body = summary[:max_body_length].rsplit(" ", 1)[0]
+            else:
+                tweet_body = summary
+            
+            tweet_text = "{} \n\n{} ".format(tweet_body, tweet_url)
+        else:
+            # Fallback
+            
+            # Post to LinkedIn (Fallback content)
+            ln_secrets = self.config_loader.load_linkedin_secrets()
+            if ln_secrets:
+                try:
+                    access_token = ln_secrets.get('access_token')
+                    if access_token:
+                        linkedin_headers = ln_headers(access_token)
+                        user_info = ln_user_info(linkedin_headers)
+                        urn = user_info['id']
+                        author = f"urn:li:person:{urn}"
+                        api_url = "https://api.linkedin.com/rest/posts"
+                        
+                        post_2_linkedin_new(
+                            rsscontent['title'],
+                            rsscontent['url'],
+                            content,
+                            author,
+                            api_url,
+                            linkedin_headers
+                        )
+                        print("Posted to LinkedIn (Fallback).")
+                except Exception as e:
+                    print(f"Error posting to LinkedIn: {e}")
+
+            body_length = self._calculate_max_tweet_body_length(include_hashtags=True)
+            tweet_body = content[:body_length]
+            tweet_text = "{} {} {}".format(tweet_body, tweet_url, tweet_hashtag)
+
+        # Post to Twitter
+        try:
+            twitter.update_status(tweet_text)
+            print("Posted to Twitter.")
+            
+            # Mark as published
+            self.db_ops.mark_as_published(rsscontent['url'])
+            
+        except Exception as e:
+            print(f"Error posting to Twitter: {e}")
 
     def _calculate_max_tweet_body_length(self, include_hashtags=True):
         """Calculate maximum length for tweet body considering URL and optional hashtags."""
@@ -102,77 +227,9 @@ class RSSContentHelper(Helper):
             config.TWEET_MAX_LENGTH - config.TWEET_URL_LENGTH - config.TWEET_IMG_LENGTH
         )
         if include_hashtags:
-            hashtag_length = len(self.data["hashtags"])
+            # In new logic, hashtags is a string, not list? Old: len(self.data["hashtags"])
+            # self.feed_config['hashtags'] is likely a string or list.
+            ht = self.feed_config.get('hashtags', '')
+            hashtag_length = len(ht)
             available_length -= hashtag_length
-        # Reserve 2 characters for spaces between body, URL, and hashtags
         return available_length - 2
-
-    def tweet_rsscontent(self, rsscontent):
-        ln_credentials = "/home/ubuntu/publishfeed/publishfeed/ln_credentials.json"
-        linkedin_access_token = ln_auth(ln_credentials)  # Authenticate the API
-        linkedin_headers = ln_headers(
-            linkedin_access_token
-        )  # Make the headers to attach to the API call.
-
-        # Get user id to make a UGC post
-        user_info = ln_user_info(linkedin_headers)
-        urn = user_info["id"]
-
-        the_hashtags = generate_hashtags_fuzzy(rsscontent.title)
-        content = rsscontent.title + "\n" + " ".join(list(the_hashtags))
-
-        api_url = "https://api.linkedin.com/rest/posts"
-        author = f"urn:li:person:{urn}"
-
-        credentials = self.data["twitter"]
-        twitter = Twitter(**credentials)
-
-        tweet_url = rsscontent.url
-        tweet_hashtag = self.data["hashtags"]
-
-        # Use OpenAI to generate a summary
-        article_text = extract_article_text(rsscontent.url)
-        if article_text:
-            summary = summarize_text(article_text)
-            post_2_linkedin_new(
-                rsscontent.title,
-                rsscontent.url,
-                summary,
-                author,
-                api_url,
-                linkedin_headers,
-            )
-
-            # For AI summary: don't add extra hashtags since summary already contains them
-            # Calculate max length without additional hashtags
-            max_body_length = self._calculate_max_tweet_body_length(
-                include_hashtags=False
-            )
-
-            # Ensure the summary fits within Twitter limits
-            if len(summary) > max_body_length:
-                tweet_body = summary[:max_body_length].rsplit(" ", 1)[
-                    0
-                ]  # Cut at word boundary
-            else:
-                tweet_body = summary
-
-            tweet_text = "{} \n\n{} ".format(tweet_body, tweet_url)
-        else:
-            post_2_linkedin_new(
-                rsscontent.title,
-                rsscontent.url,
-                content,
-                author,
-                api_url,
-                linkedin_headers,
-            )
-
-            # For fallback: use original logic with hashtags
-            body_length = self._calculate_max_tweet_body_length(include_hashtags=True)
-            tweet_body = content[:body_length]
-            tweet_text = "{} {} {}".format(tweet_body, tweet_url, tweet_hashtag)
-
-        twitter.update_status(tweet_text)
-        rsscontent.published = True
-        self.session.flush()

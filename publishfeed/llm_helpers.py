@@ -20,7 +20,20 @@ def load_openai_key():
             return f.read().strip()
 
     # Fallback to environment variable
-    return os.environ.get("OPENAI_KEY")
+    env_key = os.environ.get("OPENAI_KEY")
+    if env_key:
+        return env_key
+
+    # Last resort: Try SSM Parameter Store (for Lambda)
+    try:
+        import boto3
+        ssm = boto3.client('ssm')
+        parameter_name = "/rss-feed/global/openai_key"
+        response = ssm.get_parameter(Name=parameter_name, WithDecryption=True)
+        return response['Parameter']['Value']
+    except Exception as e:
+        # logging.warning(f"Could not load OpenAI key from SSM: {e}")
+        return None
 
 
 openai.api_key = load_openai_key()
@@ -329,15 +342,19 @@ def summarize_text(text, max_tokens=250):
         return ""
 
     try:
-        prompt = """Create an engaging social media post (max 250 characters) from this article. 
+        prompt = """Create a concise, engaging social media post (max 250 characters) summarizing the key insight of this article.
 
-REQUIREMENTS:
-- Use a casual technical tone
-- Avoid the usage of "Exciting news!"
-- COULD include relevant emojis (2-4 emojis) if needed
-- MUST include relevant hashtags based on the topic (e.g., #AI, #MachineLearning, #Tech, #Programming, #DataScience, #WebDev, #DevOps, #Cybersecurity, #Cloud, #Innovation)
-- Keep it under 250 characters total
-- These are not owned articles, so MUST avoid using "our", "mine", "my"
+CRITICAL INSTRUCTIONS:
+- START IMMEDIATELY with the insight or fact.
+- BANNED STARTING PHRASES: "Exciting news!", "Just announced", "Check this out", "Thrilled to share".
+- NO MARKETING FLUFF. Go straight to the point.
+- STRICTLY FORBIDDEN: First-person pronouns (I, we, my, our, mine, us).
+- Tone: Casual but professional/technical.
+- HARD LIMIT: Under 250 characters total.
+
+INCLUDES:
+- 2-4 relevant emojis.
+- Relevant hashtags (e.g., #AI, #Tech, #Cloud, #DevOps, etc.).
 
 FORMAT: [Summary] [Emojis] [Hashtags]
 
