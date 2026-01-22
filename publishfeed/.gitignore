@@ -6,4 +6,3 @@ test.db
 ln_credentials.json
 openai_key.txt
 .idea/
-cdk.context.json
