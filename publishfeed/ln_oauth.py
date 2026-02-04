@@ -154,5 +154,5 @@ def ln_refresh_token(auth_code, client_id, client_secret, redirect_uri):
 
 
 if __name__ == '__main__':
-    credentials = '/home/ubuntu/publishfeed/publishfeed/ln_credentials.json'
+    credentials = 'ln_credentials.json'
     access_token = ln_auth(credentials)
