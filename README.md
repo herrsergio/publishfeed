@@ -23,7 +23,7 @@ A publisher of articles from websites RSS feeds to Twitter and LinkedIn, now pow
 
 This app performs two main tasks:
 1.  **Fetch**: Downloads RSS content from sources listed in `feeds.yml`.
-2.  **Publish**: Posts titles and links to Twitter and LinkedIn.
+2.  **Publish**: Posts titles and links to X (Twitter) using headless Playwright automation, and to LinkedIn.
 
 It is designed to run on AWS Lambda, scheduled via EventBridge, using DynamoDB for storage.
 
@@ -31,9 +31,10 @@ It is designed to run on AWS Lambda, scheduled via EventBridge, using DynamoDB f
 
 -   **CDK Stack**: Infrastructure as Code defined in `cdk/`. Creates:
     -   **DynamoDB Tables**: `RSSContent` (articles) and `FeedConfigurations` (settings).
-    -   **Lambda Functions**: Docker-based Python 3.12 functions for Fetching and Publishing.
+    -   **S3 Bucket**: `TwitterStateBucket` (securely stores Playwright cookies).
+    -   **Lambda Functions**: Playwright-compatible Docker Python functions for Fetching and Publishing.
     -   **EventBridge Rules**: Schedules Fetch (daily) and Publish (every 2 hours).
--   **SSM Parameter Store**: Securely stores Twitter and LinkedIn credentials.
+-   **SSM Parameter Store**: Securely stores LinkedIn credentials. (Twitter API keys are no longer used).
 
 # Installation & Deployment
 
@@ -71,19 +72,15 @@ cp feeds.yml.skel feeds.yml
 Example `feeds.yml`:
 ```yaml
 TechnologyFeeds: # Feed ID
-  twitter:
-    consumer_key: 'XXXXXX'
-    consumer_secret: 'XXXXXXX'
-    access_key: 'XXXXXX'
-    access_secret: 'XXXXXX'
   urls:
     - https://simpleit.rocks/feed
   hashtags: '#TechTutorials'
   min_date: '2025-01-01' # Optional: Ignore articles older than this date
 ```
+*(Note: Twitter API keys are no longer required in feeds.yml)*
 
 ## Credentials
--   **Twitter**: Defined in `feeds.yml` under each feed ID.
+-   **X (Twitter)**: Authentication is handled via session cookies to bypass API fees. You must generate a `twitter_state.json` file and upload it to your S3 `TwitterStateBucket`.
 -   **LinkedIn**: Defined in `ln_credentials.json` (optional).
 -   **OpenAI**: Defined in `openai_key.txt` (optional, for summaries).
 
@@ -96,6 +93,19 @@ Whenever you edit `feeds.yml`, `ln_credentials.json` or `openai_key.txt`, run th
 cd publishfeed
 # Replace <config_table_name> with your deployed FeedConfigurations table name
 python management/sync_feeds.py --region us-east-1 --table-name <config_table_name>
+```
+
+## X (Twitter) Authentication State
+Since the bot uses Playwright to mimic a real user, it needs your session cookies.
+1. Log into X.com on your local browser.
+2. Open Developer Tools -> Application -> Cookies, and copy the `auth_token` and `ct0` values.
+3. Run the state generator script:
+```bash
+python management/create_state_from_cookies.py --auth_token "YOUR_AUTH_TOKEN" --ct0 "YOUR_CT0_VALUE"
+```
+4. Upload the generated `twitter_state.json` to your CDK-created S3 bucket:
+```bash
+aws s3 cp twitter_state.json s3://<YOUR_TWITTER_STATE_BUCKET_NAME>/twitter_state.json
 ```
 
 ## Data Migration

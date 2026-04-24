@@ -1,3 +1,4 @@
+import os
 import re
 import requests
 import feedparser
@@ -105,10 +106,10 @@ class RSSContentHelper(Helper):
 
         print(f"Processing: {rsscontent['title']}")
 
-        # 2. Get Secrets (Twitter Keys)
-        secrets = self.config_loader.load_secrets(self.feed_id)
-        if not secrets:
-            print(f"No secrets found for {self.feed_id}. Cannot post.")
+        # 2. Get S3 bucket
+        state_bucket = os.environ.get('TWITTER_STATE_BUCKET')
+        if not state_bucket:
+            print("No TWITTER_STATE_BUCKET found in environment. Cannot post to Twitter.")
             return
             
         # LinkedIn Token (Assume needed? The old code used ln_credentials.json)
@@ -127,7 +128,7 @@ class RSSContentHelper(Helper):
         
         # ... (Continuing with Twitter logic) ...
         
-        twitter = Twitter(**secrets)
+        twitter = Twitter(state_bucket)
 
         tweet_url = rsscontent['url']
         tweet_hashtag = self.feed_config.get('hashtags', '')

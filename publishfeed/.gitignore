@@ -5,4 +5,5 @@ feeds.yml
 test.db
 ln_credentials.json
 openai_key.txt
+twitter_state.json
 .idea/
