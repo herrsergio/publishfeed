@@ -33,10 +33,10 @@ class Twitter:
 
             # Wait for the text area to be visible
             print("Waiting for tweet text area...")
-            page.wait_for_selector('[data-testid="tweetTextarea_0"]', timeout=30000)
+            page.locator('[data-testid="tweetTextarea_0"]').first.wait_for(timeout=30000)
 
             print("Typing tweet...")
-            page.locator('[data-testid="tweetTextarea_0"]').fill(text)
+            page.locator('[data-testid="tweetTextarea_0"]').first.fill(text)
 
             print("Clicking post button...")
             page.locator('[data-testid="tweetButton"]').click()
