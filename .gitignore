@@ -12,3 +12,6 @@ __pycache__/
 cdk.out/
 .cdk.staging/
 cdk.context.json
+
+# Secrets & State
+twitter_state.json
