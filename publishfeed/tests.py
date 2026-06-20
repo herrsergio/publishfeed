@@ -25,11 +25,9 @@ class TestFeedSet(unittest.TestCase):
         data = {
             'urls': ['https://news.ycombinator.com/rss'],
             'hashtags': '#example',
-            'twitter': {
-                'consumer_key': 'XXXXXXXXXXX',
-                'access_secret': 'XXXXXXXXXXXXXX',
-                'consumer_secret': 'XXXXXXXXXXXXXX',
-                'access_key': 'XXXXXXXXXXXX'
+            'bluesky': {
+                'handle': 'example.bsky.social',
+                'password': 'password'
             },
             'name': 'SimpleItRocks'
         }
@@ -37,16 +35,14 @@ class TestFeedSet(unittest.TestCase):
 
     
 
-    def test_get_twitter_credentials(self):
+    def test_get_bluesky_credentials(self):
         data = self.feed_data_dict()
         feed = FeedSet(data)
-        keys = feed.twitter_keys
+        keys = feed.bluesky_keys
 
         self.assertIsInstance(keys, dict)
-        self.assertIn('consumer_key', keys)
-        self.assertIn('access_key', keys)
-        self.assertIn('consumer_secret', keys)
-        self.assertIn('access_secret', keys)
+        self.assertIn('handle', keys)
+        self.assertIn('password', keys)
 
     def test_urls(self):
         data = self.feed_data_dict()

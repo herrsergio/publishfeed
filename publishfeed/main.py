@@ -5,7 +5,7 @@ import config
 import argparse
 
 from helpers import RSSContentHelper, FeedSetHelper
-from twitter import Twitter
+from bluesky import Bluesky
 from models import FeedSet, create_tables
 from contextlib import contextmanager
 from sqlalchemy import create_engine

@@ -43,13 +43,6 @@ class RssFeedStack(Stack):
             removal_policy=RemovalPolicy.RETAIN
         )
 
-        # S3 Bucket for Twitter State
-        self.state_bucket = s3.Bucket(
-            self, "TwitterStateBucket",
-            removal_policy=RemovalPolicy.RETAIN,
-            block_public_access=s3.BlockPublicAccess.BLOCK_ALL
-        )
-
         # Lambda Layer? (We use DockerImage so no layer needed presumably, or baking it in)
         
         # 1. Fetch Feed Function
@@ -81,8 +74,7 @@ class RssFeedStack(Stack):
             environment={
                 "RSS_TABLE_NAME": self.rss_table.table_name,
                 "CONFIG_TABLE_NAME": self.config_table.table_name,
-                "TWITTER_STATE_BUCKET": self.state_bucket.bucket_name,
-                # TWEET_MAX_LENGTH etc defined in config.py in the image
+                # POST_MAX_LENGTH etc defined in config.py in the image
             }
         )
 
@@ -92,8 +84,6 @@ class RssFeedStack(Stack):
         
         self.rss_table.grant_read_write_data(self.publish_function)
         self.config_table.grant_read_data(self.publish_function)
-        
-        self.state_bucket.grant_read_write(self.publish_function)
         
         # Grant SSM Permissions (Broad grant for now or specific path?)
         # We need to grant access to /rss-feed/*

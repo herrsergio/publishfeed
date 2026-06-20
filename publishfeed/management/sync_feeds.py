@@ -59,9 +59,9 @@ def sync_feeds(region, table_name):
         print(f"  - Config updated in DynamoDB table '{table_name}'")
 
         # 2. Update Secrets in SSM
-        if 'twitter' in data:
-            secrets = data['twitter']
-            parameter_name = f"/rss-feed/{feed_id}/twitter_creds"
+        if 'bluesky' in data:
+            secrets = data['bluesky']
+            parameter_name = f"/rss-feed/{feed_id}/bluesky_creds"
             
             ssm.put_parameter(
                 Name=parameter_name,

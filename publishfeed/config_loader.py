@@ -14,12 +14,12 @@ class ConfigLoader:
         """
         return self.db_ops.get_feed_config(feed_id)
 
-    def load_secrets(self, feed_id):
+    def load_bluesky_secrets(self, feed_id):
         """
-        Load secrets (Twitter keys) from SSM Parameter Store.
-        Expected path: /rss-feed/{feed_id}/twitter_creds
+        Load secrets (Bluesky handle and password) from SSM Parameter Store.
+        Expected path: /rss-feed/{feed_id}/bluesky_creds
         """
-        parameter_name = f"/rss-feed/{feed_id}/twitter_creds"
+        parameter_name = f"/rss-feed/{feed_id}/bluesky_creds"
         try:
             response = self.ssm.get_parameter(
                 Name=parameter_name,
@@ -28,7 +28,7 @@ class ConfigLoader:
             secrets_json = response['Parameter']['Value']
             return json.loads(secrets_json)
         except self.ssm.exceptions.ParameterNotFound:
-            print(f"Secrets not found for {feed_id} at {parameter_name}")
+            print(f"Bluesky secrets not found for {feed_id} at {parameter_name}")
             return None
 
     def load_linkedin_secrets(self):
