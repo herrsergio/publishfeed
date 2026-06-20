@@ -14,6 +14,24 @@ from ln_oauth import ln_headers
 from ln_post import ln_user_info, post_2_linkedin_new
 from bluesky import Bluesky
 
+# Matches "#word" style hashtags so they can be rendered as clickable
+# AT Protocol tag facets instead of plain text.
+HASHTAG_RE = re.compile(r'(#\w+)')
+
+
+def append_text_with_hashtags(tb, text):
+    """Append text to an atproto TextBuilder, turning #hashtags into clickable
+    tag facets. Plain tb.text() renders hashtags as non-interactive text."""
+    for segment in HASHTAG_RE.split(text):
+        if not segment:
+            continue
+        # Treat as a tag only if it has at least one letter (avoids #123 etc.)
+        if segment.startswith('#') and any(c.isalpha() for c in segment[1:]):
+            tb.tag(segment, segment[1:])
+        else:
+            tb.text(segment)
+
+
 class Helper:
     def __init__(self, feed_id):
         self.feed_id = feed_id
@@ -175,7 +193,7 @@ class RSSContentHelper(Helper):
                 tweet_body = summary
             
             tb = client_utils.TextBuilder()
-            tb.text(tweet_body)
+            append_text_with_hashtags(tb, tweet_body)
             tb.text("\n\n")
             tb.link(tweet_url, tweet_url)
             tweet_text = tb
@@ -213,7 +231,7 @@ class RSSContentHelper(Helper):
             tweet_body = content[:body_length]
             
             tb = client_utils.TextBuilder()
-            tb.text(tweet_body)
+            append_text_with_hashtags(tb, tweet_body)
             tb.text("\n\n")
             tb.link(tweet_url, tweet_url)
             if tweet_hashtag:
@@ -223,7 +241,7 @@ class RSSContentHelper(Helper):
 
         # Post to Bluesky
         try:
-            bluesky.update_status(tweet_text)
+            bluesky.update_status(tweet_text, link_url=tweet_url)
             print("Posted to Bluesky.")
             
             # Mark as published
