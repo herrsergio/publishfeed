@@ -186,16 +186,14 @@ class RSSContentHelper(Helper):
                 except Exception as e:
                     print(f"Error posting to LinkedIn: {e}")
             
-            max_body_length = self._calculate_max_post_body_length(tweet_url, include_hashtags=False)
+            max_body_length = self._calculate_max_post_body_length(include_hashtags=False)
             if len(summary) > max_body_length:
                 tweet_body = summary[:max_body_length].rsplit(" ", 1)[0]
             else:
                 tweet_body = summary
-            
+
             tb = client_utils.TextBuilder()
             append_text_with_hashtags(tb, tweet_body)
-            tb.text("\n\n")
-            tb.link(tweet_url, tweet_url)
             tweet_text = tb
         else:
             # Fallback
@@ -227,13 +225,11 @@ class RSSContentHelper(Helper):
                 except Exception as e:
                     print(f"Error posting to LinkedIn: {e}")
 
-            body_length = self._calculate_max_post_body_length(tweet_url, include_hashtags=True)
+            body_length = self._calculate_max_post_body_length(include_hashtags=True)
             tweet_body = content[:body_length]
-            
+
             tb = client_utils.TextBuilder()
             append_text_with_hashtags(tb, tweet_body)
-            tb.text("\n\n")
-            tb.link(tweet_url, tweet_url)
             if tweet_hashtag:
                 tb.text(" ")
                 tb.tag(tweet_hashtag, tweet_hashtag.lstrip('#'))
@@ -250,9 +246,13 @@ class RSSContentHelper(Helper):
         except Exception as e:
             print(f"Error posting to Bluesky: {e}")
 
-    def _calculate_max_post_body_length(self, tweet_url, include_hashtags=True):
-        """Calculate maximum length for post body considering URL and optional hashtags on Bluesky."""
-        available_length = config.POST_MAX_LENGTH - len(tweet_url) - 2  # -2 for the \n\n separator
+    def _calculate_max_post_body_length(self, include_hashtags=True):
+        """Calculate maximum length for post body on Bluesky.
+
+        The article URL is attached as a preview card (external embed), which
+        does not count toward the 300-character limit, so the URL length is no
+        longer subtracted. Only the optional feed hashtag is reserved for."""
+        available_length = config.POST_MAX_LENGTH
         if include_hashtags:
             ht = self.feed_config.get('hashtags', '')
             if ht:
