@@ -151,7 +151,7 @@ class RSSContentHelper(Helper):
                         author = f"urn:li:person:{urn}"
                         api_url = "https://api.linkedin.com/rest/posts"
                         
-                        post_2_linkedin_new(
+                        posted = post_2_linkedin_new(
                             rsscontent['title'],
                             rsscontent['url'],
                             summary,
@@ -159,7 +159,10 @@ class RSSContentHelper(Helper):
                             api_url,
                             linkedin_headers
                         )
-                        print("Posted to LinkedIn.")
+                        if posted:
+                            print("Posted to LinkedIn.")
+                        else:
+                            print("Failed to post to LinkedIn (see status above).")
                     else:
                         print("LinkedIn access_token not found in secrets.")
                 except Exception as e:
@@ -191,7 +194,7 @@ class RSSContentHelper(Helper):
                         author = f"urn:li:person:{urn}"
                         api_url = "https://api.linkedin.com/rest/posts"
                         
-                        post_2_linkedin_new(
+                        posted = post_2_linkedin_new(
                             rsscontent['title'],
                             rsscontent['url'],
                             content,
@@ -199,7 +202,10 @@ class RSSContentHelper(Helper):
                             api_url,
                             linkedin_headers
                         )
-                        print("Posted to LinkedIn (Fallback).")
+                        if posted:
+                            print("Posted to LinkedIn (Fallback).")
+                        else:
+                            print("Failed to post to LinkedIn (Fallback) (see status above).")
                 except Exception as e:
                     print(f"Error posting to LinkedIn: {e}")
 
