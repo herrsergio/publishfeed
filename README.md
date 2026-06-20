@@ -25,6 +25,8 @@ This app performs two main tasks:
 1.  **Fetch**: Downloads RSS content from sources listed in `feeds.yml`.
 2.  **Publish**: Posts titles and links to Bluesky using the official `atproto` SDK, and to LinkedIn.
 
+On Bluesky, posts include **clickable hashtags** (rendered as AT Protocol tag facets) and a **link preview card** (an `app.bsky.embed.external` embed built from the article's OpenGraph metadata). Because the link lives in the preview card rather than inline text, the article URL does not count against Bluesky's 300-character limit.
+
 It is designed to run on AWS Lambda, scheduled via EventBridge, using DynamoDB for storage and SSM Parameter Store for credentials.
 
 # Architecture
@@ -83,6 +85,11 @@ TechnologyFeeds: # Feed ID
 -   **Bluesky**: Defined inside `feeds.yml` under the `bluesky` section.
 -   **LinkedIn**: Defined in `ln_credentials.json` (optional).
 -   **OpenAI**: Defined in `openai_key.txt` (optional, for summaries).
+
+## LinkedIn API Version
+LinkedIn's versioned REST API requires a `LinkedIn-Version` header in `YYYYMM` format, and each version is only active for about 12 months. An expired version causes posts to fail with `HTTP 426 NONEXISTENT_VERSION`.
+
+The version is configurable in [config.py](publishfeed/config.py) via the `LINKEDIN_API_VERSION` setting (default `202605`) and can be overridden without a code change by setting the `LINKEDIN_API_VERSION` environment variable on the `PublishFeedFunction` Lambda. **Bump this periodically** to a currently-active version to keep LinkedIn posting working.
 
 # Management
 
