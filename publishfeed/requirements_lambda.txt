@@ -12,3 +12,4 @@ rapidfuzz
 newspaper3k==0.2.8
 mellea[litellm]>=0.7.0
 litellm>=1.97.0
+numpy<2.3
