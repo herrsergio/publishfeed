@@ -12,7 +12,25 @@ from generate_hashtags_fuzzy import generate_hashtags_fuzzy
 from llm_helpers import extract_article_text, summarize_text
 from ln_oauth import ln_headers
 from ln_post import ln_user_info, post_2_linkedin_new
-from twitter import Twitter
+from bluesky import Bluesky
+
+# Matches "#word" style hashtags so they can be rendered as clickable
+# AT Protocol tag facets instead of plain text.
+HASHTAG_RE = re.compile(r'(#\w+)')
+
+
+def append_text_with_hashtags(tb, text):
+    """Append text to an atproto TextBuilder, turning #hashtags into clickable
+    tag facets. Plain tb.text() renders hashtags as non-interactive text."""
+    for segment in HASHTAG_RE.split(text):
+        if not segment:
+            continue
+        # Treat as a tag only if it has at least one letter (avoids #123 etc.)
+        if segment.startswith('#') and any(c.isalpha() for c in segment[1:]):
+            tb.tag(segment, segment[1:])
+        else:
+            tb.text(segment)
+
 
 class Helper:
     def __init__(self, feed_id):
@@ -106,29 +124,19 @@ class RSSContentHelper(Helper):
 
         print(f"Processing: {rsscontent['title']}")
 
-        # 2. Get S3 bucket
-        state_bucket = os.environ.get('TWITTER_STATE_BUCKET')
-        if not state_bucket:
-            print("No TWITTER_STATE_BUCKET found in environment. Cannot post to Twitter.")
+        # 2. Get Bluesky secrets
+        bluesky_secrets = self.config_loader.load_bluesky_secrets(self.feed_id)
+        if not bluesky_secrets:
+            print("No Bluesky credentials found. Cannot post to Bluesky.")
             return
-            
-        # LinkedIn Token (Assume needed? The old code used ln_credentials.json)
-        # For this migration, we are focusing on migrating the 'feeds.yml' secrets (Twitter).
-        # But the code uses LinkedIn too. 
-        # Ideally, we should store LinkedIn Token in SSM too. 
-        # For now, let's assume the user has migrated LinkedIn logic effectively or we skip it if missing.
-        # Actually, let's look at `ln_auth` again. It reads from file. 
-        # We need to adapt this. 
-        # For simplistic migration, I'll comment out LinkedIn part or assume token is passed.
-        # Let's try to get LinkedIn token from SSM as well if we saved it there?
-        # The current plan didn't explicitly say "migrate LinkedIn token to SSM" but it implied strict separation.
-        # I'll stick to Twitter for now to match `feeds.yml` migration which was the request.
-        # But wait, `tweet_rsscontent` in original files DOES post to LinkedIn.
-        # I'll try to keep it functioning if I can.
-        
-        # ... (Continuing with Twitter logic) ...
-        
-        twitter = Twitter(state_bucket)
+
+        handle = bluesky_secrets.get('handle')
+        password = bluesky_secrets.get('password')
+        if not handle or not password:
+            print("Invalid Bluesky credentials. Must contain handle and password.")
+            return
+
+        bluesky = Bluesky(handle, password)
 
         tweet_url = rsscontent['url']
         tweet_hashtag = self.feed_config.get('hashtags', '')
@@ -139,8 +147,10 @@ class RSSContentHelper(Helper):
 
         # OpenAI Summary
         article_text = extract_article_text(rsscontent['url'])
-        tweet_text = ""
+        tweet_text = None
         
+        from atproto import client_utils
+
         if article_text:
             summary = summarize_text(article_text)
             
@@ -159,7 +169,7 @@ class RSSContentHelper(Helper):
                         author = f"urn:li:person:{urn}"
                         api_url = "https://api.linkedin.com/rest/posts"
                         
-                        post_2_linkedin_new(
+                        posted = post_2_linkedin_new(
                             rsscontent['title'],
                             rsscontent['url'],
                             summary,
@@ -167,19 +177,24 @@ class RSSContentHelper(Helper):
                             api_url,
                             linkedin_headers
                         )
-                        print("Posted to LinkedIn.")
+                        if posted:
+                            print("Posted to LinkedIn.")
+                        else:
+                            print("Failed to post to LinkedIn (see status above).")
                     else:
                         print("LinkedIn access_token not found in secrets.")
                 except Exception as e:
                     print(f"Error posting to LinkedIn: {e}")
             
-            max_body_length = self._calculate_max_tweet_body_length(include_hashtags=False)
+            max_body_length = self._calculate_max_post_body_length(include_hashtags=False)
             if len(summary) > max_body_length:
                 tweet_body = summary[:max_body_length].rsplit(" ", 1)[0]
             else:
                 tweet_body = summary
-            
-            tweet_text = "{} \n\n{} ".format(tweet_body, tweet_url)
+
+            tb = client_utils.TextBuilder()
+            append_text_with_hashtags(tb, tweet_body)
+            tweet_text = tb
         else:
             # Fallback
             
@@ -195,7 +210,7 @@ class RSSContentHelper(Helper):
                         author = f"urn:li:person:{urn}"
                         api_url = "https://api.linkedin.com/rest/posts"
                         
-                        post_2_linkedin_new(
+                        posted = post_2_linkedin_new(
                             rsscontent['title'],
                             rsscontent['url'],
                             content,
@@ -203,34 +218,43 @@ class RSSContentHelper(Helper):
                             api_url,
                             linkedin_headers
                         )
-                        print("Posted to LinkedIn (Fallback).")
+                        if posted:
+                            print("Posted to LinkedIn (Fallback).")
+                        else:
+                            print("Failed to post to LinkedIn (Fallback) (see status above).")
                 except Exception as e:
                     print(f"Error posting to LinkedIn: {e}")
 
-            body_length = self._calculate_max_tweet_body_length(include_hashtags=True)
+            body_length = self._calculate_max_post_body_length(include_hashtags=True)
             tweet_body = content[:body_length]
-            tweet_text = "{} {} {}".format(tweet_body, tweet_url, tweet_hashtag)
 
-        # Post to Twitter
+            tb = client_utils.TextBuilder()
+            append_text_with_hashtags(tb, tweet_body)
+            if tweet_hashtag:
+                tb.text(" ")
+                tb.tag(tweet_hashtag, tweet_hashtag.lstrip('#'))
+            tweet_text = tb
+
+        # Post to Bluesky
         try:
-            twitter.update_status(tweet_text)
-            print("Posted to Twitter.")
+            bluesky.update_status(tweet_text, link_url=tweet_url)
+            print("Posted to Bluesky.")
             
             # Mark as published
             self.db_ops.mark_as_published(rsscontent['url'])
             
         except Exception as e:
-            print(f"Error posting to Twitter: {e}")
+            print(f"Error posting to Bluesky: {e}")
 
-    def _calculate_max_tweet_body_length(self, include_hashtags=True):
-        """Calculate maximum length for tweet body considering URL and optional hashtags."""
-        available_length = (
-            config.TWEET_MAX_LENGTH - config.TWEET_URL_LENGTH - config.TWEET_IMG_LENGTH
-        )
+    def _calculate_max_post_body_length(self, include_hashtags=True):
+        """Calculate maximum length for post body on Bluesky.
+
+        The article URL is attached as a preview card (external embed), which
+        does not count toward the 300-character limit, so the URL length is no
+        longer subtracted. Only the optional feed hashtag is reserved for."""
+        available_length = config.POST_MAX_LENGTH
         if include_hashtags:
-            # In new logic, hashtags is a string, not list? Old: len(self.data["hashtags"])
-            # self.feed_config['hashtags'] is likely a string or list.
             ht = self.feed_config.get('hashtags', '')
-            hashtag_length = len(ht)
-            available_length -= hashtag_length
-        return available_length - 2
+            if ht:
+                available_length -= (len(ht) + 1)  # +1 for space separator
+        return available_length

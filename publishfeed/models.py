@@ -33,8 +33,8 @@ class FeedSet:
             self.data = data
 
     @property
-    def twitter_keys(self):
-        return self.data['twitter']
+    def bluesky_keys(self):
+        return self.data['bluesky']
 
     @property
     def urls(self):

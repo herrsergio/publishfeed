@@ -4,6 +4,8 @@ from urllib.parse import urljoin, urlparse
 
 import opengraph_py3
 import requests
+
+import config
 from ln_oauth import ln_auth, ln_headers
 
 # credentials = '/home/ubuntu/publishfeed/publishfeed/ln_credentials.json'
@@ -121,16 +123,19 @@ def post_2_linkedin_new(message, link, link_text, author, api_url, headers):
         "isReshareDisabledByAuthor": False
     }
 
-    headers["Linkedin-Version"] = "202505"
+    headers["Linkedin-Version"] = config.LINKEDIN_API_VERSION
 
     response = requests.post(
-            api_url, 
-            headers=headers, 
+            api_url,
+            headers=headers,
             json=post_data
     )
 
     print("LinkedIn post status:", response.status_code)
     print(response.text)
+
+    # 2xx is success; anything else (e.g. 426 NONEXISTENT_VERSION) is a failure.
+    return response.ok
 
 def get_image_url_from_link(link):
     image_url = ""
@@ -172,7 +177,7 @@ def upload_image_and_get_urn(image_url, author_urn, headers):
 
     init_resp = requests.post(
         "https://api.linkedin.com/rest/images?action=initializeUpload",
-        headers={**headers, "LinkedIn-Version": "202505", "Content-Type": "application/json"},
+        headers={**headers, "LinkedIn-Version": config.LINKEDIN_API_VERSION, "Content-Type": "application/json"},
         json=init_payload
     )
 

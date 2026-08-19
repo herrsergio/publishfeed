@@ -1,18 +1,10 @@
-FROM mcr.microsoft.com/playwright/python:v1.42.0-jammy
+FROM public.ecr.aws/lambda/python:3.11
 
-# Create app directory
-ARG FUNCTION_DIR="/var/task"
-RUN mkdir -p ${FUNCTION_DIR}
-WORKDIR ${FUNCTION_DIR}
+COPY requirements_lambda.txt ${LAMBDA_TASK_ROOT}
 
-# Install dependencies
-COPY requirements_lambda.txt .
-RUN pip install -r requirements_lambda.txt
-RUN playwright install chromium
+RUN pip install --no-cache-dir -r requirements_lambda.txt --target ${LAMBDA_TASK_ROOT}
 
-# Copy code
-COPY . ${FUNCTION_DIR}
+COPY . ${LAMBDA_TASK_ROOT}
 
-# Set the ENTRYPOINT to the AWS Lambda Runtime Interface Client
-ENTRYPOINT [ "/usr/bin/python", "-m", "awslambdaric" ]
+# Set the CMD to your handler
 CMD [ "lambda_fetch.handler" ]

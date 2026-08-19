@@ -1,9 +1,7 @@
-simpleitrocks: #twitter handler
-  twitter:
-    consumer_key: ''
-    consumer_secret: ''
-    access_key: ''
-    access_secret: ''
+simpleitrocks: #bluesky identifier
+  bluesky:
+    handle: ''
+    password: ''
   urls:
     - #https://simpleit.rocks/feed
   hashtags: ''
