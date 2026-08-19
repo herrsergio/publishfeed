@@ -11,4 +11,4 @@ lxml_html_clean
 opengraph-py3
 rapidfuzz
 newspaper3k==0.2.8
-
+mellea[litellm]>=0.3.2
