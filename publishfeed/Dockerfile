@@ -1,7 +1,7 @@
 # Stage 1: Build dependencies with compilers
 FROM public.ecr.aws/lambda/python:3.11 AS builder
 
-RUN dnf install -y gcc gcc-c++ make && \
+RUN yum install -y gcc gcc-c++ make zlib-devel libjpeg-devel && \
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
     source $HOME/.cargo/env
 
