@@ -62,5 +62,6 @@ typing_extensions==4.14.1
 urllib3==2.5.0
 yarl==1.20.1
 atproto
-mellea[litellm]>=0.3.2
+mellea[litellm]>=0.7.0
+litellm>=1.97.0
 
