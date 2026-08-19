@@ -5,7 +5,6 @@ import time
 from urllib.parse import urlparse
 
 import newspaper
-import openai
 import requests
 from bs4 import BeautifulSoup
 from newspaper import Config, settings
@@ -43,8 +42,6 @@ def load_openai_key():
         # logging.warning(f"Could not load OpenAI key from SSM: {e}")
         return None
 
-
-openai.api_key = load_openai_key()
 
 
 def _extract_with_advanced_requests(url):
@@ -404,43 +401,5 @@ Article:
         return str(result.value).strip() if result.value else ""
 
     except Exception as e:
-        logging.error("LLM summarization with Mellea failed: %s", str(e))
-        return _summarize_text_fallback(text, max_tokens)
-
-
-def _summarize_text_fallback(text, max_tokens=100):
-    """Original summarize_text implementation as fallback."""
-    try:
-        prompt = """Summarize this article as a third-party social media post (under 250 characters).
-
-STYLE:
-- Write as a tech journalist reporting news, not as the company announcing it.
-- Lead with the key insight or fact.
-- Casual but professional tone.
-- NEVER use first-person pronouns (I, we, my, our, us, me).
-
-GOOD EXAMPLE:
-"Kubernetes 1.30 introduces native sidecar containers, simplifying service mesh deployments. 🚀☸️ #Kubernetes #DevOps #CloudNative"
-
-BAD PHRASES TO AVOID: "Join us", "We're excited", "Our team", "Check this out"
-
-FORMAT: [Fact/insight] [2-3 emojis] [2-4 hashtags]
-
-Article:
-{text}"""
-
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt.format(text=text),
-                }
-            ],
-            temperature=0.8,
-            max_tokens=max_tokens,
-        )
-        return response["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        logging.error("Fallback LLM summarization failed: %s", str(e))
+        logging.error("LLM summarization failed: %s", str(e))
         return ""
