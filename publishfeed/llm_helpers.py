@@ -5,10 +5,17 @@ import time
 from urllib.parse import urlparse
 
 import newspaper
-import openai
 import requests
 from bs4 import BeautifulSoup
 from newspaper import Config, settings
+
+from mellea import MelleaSession
+from mellea.backends.litellm import LiteLLMBackend
+from mellea.stdlib.requirements import Requirement, simple_validate
+from mellea.stdlib.sampling import RejectionSamplingStrategy
+from validators import no_first_person_pronouns
+
+_mellea_session = None
 
 
 def load_openai_key():
@@ -35,8 +42,6 @@ def load_openai_key():
         # logging.warning(f"Could not load OpenAI key from SSM: {e}")
         return None
 
-
-openai.api_key = load_openai_key()
 
 
 def _extract_with_advanced_requests(url):
@@ -336,43 +341,65 @@ def extract_article_summary(url):
     return ""
 
 
-def summarize_text(text, max_tokens=250):
-    """Summarize article text for social media with CTAs, emojis, and hashtags."""
+def _get_mellea_session():
+    """Lazily initialize the Mellea session for LLM calls."""
+    global _mellea_session
+    if _mellea_session is None:
+        api_key = load_openai_key()
+        if api_key:
+            os.environ.setdefault("OPENAI_API_KEY", api_key)
+
+        backend = LiteLLMBackend(model_id="openai/gpt-3.5-turbo")
+        _mellea_session = MelleaSession(backend)
+    return _mellea_session
+
+
+def summarize_text(text, max_tokens=100, max_retries=3):
+    """Summarize article text for social media with CTAs, emojis, and hashtags.
+
+    Uses Mellea to validate that generated content contains no first-person
+    pronouns, automatically retrying if validation fails.
+    """
     if not text:
         return ""
 
     try:
-        prompt = """Create a concise, engaging social media post (max 250 characters) summarizing the key insight of this article.
+        session = _get_mellea_session()
 
-CRITICAL INSTRUCTIONS:
-- START IMMEDIATELY with the insight or fact.
-- BANNED STARTING PHRASES: "Exciting news!", "Just announced", "Check this out", "Thrilled to share".
-- NO MARKETING FLUFF. Go straight to the point.
-- STRICTLY FORBIDDEN: First-person pronouns (I, we, my, our, mine, us).
-- Tone: Casual but professional/technical.
-- HARD LIMIT: Under 250 characters total.
+        prompt = """Summarize this article as a third-party social media post (under 250 characters).
 
-INCLUDES:
-- 2-4 relevant emojis.
-- Relevant hashtags (e.g., #AI, #Tech, #Cloud, #DevOps, etc.).
+STYLE:
+- Write as a tech journalist reporting news, not as the company announcing it.
+- Lead with the key insight or fact.
+- Casual but professional tone.
 
-FORMAT: [Summary] [Emojis] [Hashtags]
+GOOD EXAMPLE:
+"Kubernetes 1.30 introduces native sidecar containers, simplifying service mesh deployments. 🚀☸️ #Kubernetes #DevOps #CloudNative"
 
-Article content:
-{text}"""
+BAD PHRASES TO AVOID: "Join us", "We're excited", "Our team", "Check this out"
 
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt.format(text=text),
-                }
-            ],
-            temperature=0.8,
-            max_tokens=max_tokens,
+FORMAT: [Fact/insight] [2-3 emojis] [2-4 hashtags]
+
+Article:
+{{ article_text }}"""
+
+        requirements = [
+            Requirement(
+                "No first-person pronouns (I, we, my, our, us, etc.) or phrases like 'Join us', 'We created'.",
+                validation_fn=simple_validate(no_first_person_pronouns),
+            ),
+        ]
+
+        result = session.instruct(
+            prompt,
+            requirements=requirements,
+            user_variables={"article_text": text},
+            strategy=RejectionSamplingStrategy(loop_budget=max_retries),
+            model_options={"max_tokens": max_tokens, "temperature": 0.8},
         )
-        return response["choices"][0]["message"]["content"].strip()
+
+        return str(result.value).strip() if result.value else ""
+
     except Exception as e:
         logging.error("LLM summarization failed: %s", str(e))
         return ""

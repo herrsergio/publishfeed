@@ -37,7 +37,6 @@ lxml_html_clean==0.4.2
 multidict==6.6.3
 newspaper3k==0.2.8
 nltk==3.9.1
-openai==0.28.0
 pillow==11.3.0
 propcache==0.3.2
 publication==0.0.3
@@ -62,4 +61,6 @@ typing_extensions==4.14.1
 urllib3==2.5.0
 yarl==1.20.1
 atproto
+mellea[litellm]>=0.7.0
+litellm>=1.97.0
 

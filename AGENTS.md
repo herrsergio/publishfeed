@@ -26,7 +26,7 @@ The CDK stack is defined in [stack.py](file:///home/herrsergio/my_publishfeed/pu
 *   **SSM Parameters**:
     *   `/rss-feed/{feed_id}/bluesky_creds`: JSON string containing `handle` and `password`.
     *   `/rss-feed/global/linkedin_creds`: JSON string containing LinkedIn tokens.
-    *   `/rss-feed/global/openai_key`: Secret string containing the OpenAI API Key.
+    *   `/rss-feed/global/openai_key`: Secret string containing the OpenAI API Key (used by Mellea/LiteLLM for summaries).
 *   **Lambda Functions** (`FetchFeedFunction` & `PublishFeedFunction`):
     *   Packaged using Docker container images based on the official `public.ecr.aws/lambda/python:3.11` base image.
     *   Scheduled via EventBridge (Fetch: daily, Publish: every 2 hours).
@@ -54,6 +54,14 @@ The CDK stack is defined in [stack.py](file:///home/herrsergio/my_publishfeed/pu
 *   **Module**: Posting logic in [ln_post.py](file:///home/herrsergio/my_publishfeed/publishfeed/publishfeed/ln_post.py); OAuth/header helpers in [ln_oauth.py](file:///home/herrsergio/my_publishfeed/publishfeed/publishfeed/ln_oauth.py).
 *   **Versioned header**: LinkedIn's REST API requires a `LinkedIn-Version` header in `YYYYMM` format, and each version stays active only ~12 months. An expired version fails with `HTTP 426 NONEXISTENT_VERSION`. The value is centralized in `config.LINKEDIN_API_VERSION` ([config.py](file:///home/herrsergio/my_publishfeed/publishfeed/publishfeed/config.py), default `202605`) and overridable via the `LINKEDIN_API_VERSION` env var. **Bump it periodically.**
 *   **Failure reporting**: `post_2_linkedin_new` returns `response.ok` so callers can distinguish success from failure; `helpers.py` logs accordingly rather than always claiming success.
+
+### LLM Summarization with Mellea (`mellea` + `litellm`)
+*   **Module**: Summarization in [llm_helpers.py](publishfeed/llm_helpers.py); validation in [validators.py](publishfeed/validators.py).
+*   **Purpose**: Generate concise social media posts from article text using OpenAI (GPT-3.5-turbo via LiteLLM).
+*   **Validation**: Uses Mellea's `Requirement` with `simple_validate()` to enforce third-person perspective. If first-person pronouns or phrases (e.g., "we", "our", "join us", "let's") are detected, Mellea automatically retries generation up to 3 times.
+*   **Key function**: `summarize_text(text, max_tokens=100, max_retries=3)` in `llm_helpers.py`.
+*   **Validator**: `no_first_person_pronouns(text)` in `validators.py` uses regex patterns with word boundaries to detect pronouns without false positives (e.g., "discuss" contains "us" but should pass).
+*   **API Key**: Loaded via `load_openai_key()` from `openai_key.txt`, `OPENAI_KEY` env var, or SSM `/rss-feed/global/openai_key`. Set as `OPENAI_API_KEY` env var for LiteLLM.
 
 ### Legacy Code Notice
 *   `models.py`, `tests.py`, and `main.py` contain legacy local SQLite code. The active system runs entirely on AWS DynamoDB + SSM. 
