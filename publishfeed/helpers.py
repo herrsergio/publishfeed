@@ -13,6 +13,7 @@ from llm_helpers import extract_article_text, summarize_text
 from ln_oauth import ln_headers
 from ln_post import ln_user_info, post_2_linkedin_new
 from bluesky import Bluesky
+from text_utils import strip_wrapping_quotes
 
 # Matches "#word" style hashtags so they can be rendered as clickable
 # AT Protocol tag facets instead of plain text.
@@ -143,7 +144,8 @@ class RSSContentHelper(Helper):
         
         # Generate hashtags
         the_hashtags = generate_hashtags_fuzzy(rsscontent['title'])
-        content = rsscontent['title'] + "\n" + " ".join(list(the_hashtags))
+        content = strip_wrapping_quotes(rsscontent['title'])
+        content += "\n" + " ".join(list(the_hashtags))
 
         # OpenAI Summary
         article_text = extract_article_text(rsscontent['url'])
@@ -152,7 +154,7 @@ class RSSContentHelper(Helper):
         from atproto import client_utils
 
         if article_text:
-            summary = summarize_text(article_text)
+            summary = strip_wrapping_quotes(summarize_text(article_text))
             
             # Post to LinkedIn 
             ln_secrets = self.config_loader.load_linkedin_secrets()
