@@ -372,9 +372,10 @@ STYLE:
 - Write as a tech journalist reporting news, not as the company announcing it.
 - Lead with the key insight or fact.
 - Casual but professional tone.
+- Do not wrap the post in quotation marks.
 
 GOOD EXAMPLE:
-"Kubernetes 1.30 introduces native sidecar containers, simplifying service mesh deployments. 🚀☸️ #Kubernetes #DevOps #CloudNative"
+Kubernetes 1.30 introduces native sidecar containers, simplifying service mesh deployments. 🚀☸️ #Kubernetes #DevOps #CloudNative
 
 BAD PHRASES TO AVOID: "Join us", "We're excited", "Our team", "Check this out"
 
