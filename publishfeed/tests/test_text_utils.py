@@ -24,3 +24,16 @@ class TestStripWrappingQuotes(unittest.TestCase):
     def test_preserve_unpaired_or_internal_quotes(self):
         self.assertEqual(strip_wrapping_quotes('A "quoted" phrase'), 'A "quoted" phrase')
         self.assertEqual(strip_wrapping_quotes('"An unfinished quote'), '"An unfinished quote')
+
+    def test_strip_quotes_with_trailing_emojis(self):
+        self.assertEqual(
+            strip_wrapping_quotes(
+                '"MCP protocol undergoes major revision. #MCP #AWS" 🔁 🌍'
+            ),
+            "MCP protocol undergoes major revision. #MCP #AWS 🔁 🌍",
+        )
+
+    def test_strip_quotes_with_trailing_whitespace_after_close(self):
+        self.assertEqual(
+            strip_wrapping_quotes('"A useful post."   '), "A useful post."
+        )
